@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  服务脚手架模板 · 后端工程
+
+  设计要点：
+  1. 单模块，不做多模块拆分。当前规模（约 25 个类）用多模块只会增加理解成本。
+  2. 只引 10 个依赖，每个都有明确用途，见下方注释。用不上的不要"先加着"。
+  3. 版本能交给 Spring Boot 管理的就不手写，避免版本冲突。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.touki</groupId>
+    <artifactId>service-template</artifactId>
+    <version>1.0.0</version>
+    <name>service-template</name>
+    <description>个人工具站骨架：展示页 + 管理端</description>
+
+    <properties>
+        <!-- Spring Boot 4 基线要求 JDK 17+，本项目用 21 LTS -->
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!--
+          以下三项 Boot 不管理，必须手写版本；其余依赖一律跟随 parent 的 BOM。
+          改版本时只改这里，不要在 dependency 里散落写 <version>。
+        -->
+        <!-- MyBatis-Plus 的 Boot 4 专用 starter，注意 artifactId 带的 "4" -->
+        <mybatis-plus.version>3.5.18.1</mybatis-plus.version>
+        <!-- 3.x 系列才支持 Spring Boot 4，2.x 会启动失败 -->
+        <springdoc.version>3.2.0</springdoc.version>
+        <!-- JJWT 三件套，api 编译期用，impl/jackson 运行期用 -->
+        <jjwt.version>0.12.6</jjwt.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web：REST 接口、内嵌 Tomcat -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 参数校验：@NotBlank / @Size 等注解支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- 健康检查：只要 /actuator/health，够用就行，不开其他端点 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- 持久层：MyBatis-Plus（自带 JdbcTemplate 与 DataSource 自动配置所需的 jdbc starter） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+
+        <!--
+          分页插件所需的 SQL 解析依赖。
+          MyBatis-Plus 从 3.5.9 起把 jsqlparser 相关能力拆成了可选依赖，
+          不单独引入的话，PaginationInnerInterceptor 类根本不在 classpath 上，
+          编译期报"找不到符号"，报错信息完全指不到缺失的依赖，很容易卡住。
+        -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+
+        <!-- MySQL 驱动：版本由 Boot 统一管理，不要手写 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--
+          表结构迁移。
+          Spring Boot 4 把各技术的自动配置拆成了独立模块，Flyway 的自动配置
+          不再随 spring-boot-autoconfigure 一起生效，必须显式引入这个 starter。
+          否则 flyway-core 虽然在 classpath 上，却没有任何人调用它——
+          表现为"启动一切正常，但库里一张表都没建"，非常难排查。
+          flyway-mysql 是 MySQL 方言支持，Flyway 8.0 起必须单独引入。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!--
+          只取 BCryptPasswordEncoder，不引入完整的 spring-boot-starter-security。
+          个人项目用拦截器做登录校验，用不到过滤器链那一整套。
+          这个包很小（约 50KB），不会拖入安全框架。
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <!-- JWT：api 提供接口，impl 是具体实现，jackson 负责 JSON 序列化 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- 接口文档：Swagger UI 在 /swagger-ui.html -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!--
+          简化样板代码：实体类的 getter/setter、构造器、日志对象都靠它。
+          版本交给 Boot 管理（1.18.x，已支持 JDK 21）。
+          如果团队不用 Lombok，删掉这个依赖，用 IDE 生成 getter/setter 即可，不影响功能。
+        -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试：JUnit 5 + Spring Boot Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+              显式声明 Lombok 为注解处理器。
+              原因：JDK 21 起 javac 不再自动运行类路径上的注解处理器（编译时会给出警告），
+              JDK 23 起默认彻底禁用。不配这段，将来换 JDK 后 @Data 生成的 getter/setter
+              会悄悄消失，编译直接失败，且报错信息很难指向真正原因。
+              版本号跟随 Spring Boot parent 的 lombok.version 属性，不用手写。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- 打成可执行 jar：mvn package 后 java -jar 直接运行 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Lombok 只在编译期需要，不打进最终 jar -->
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

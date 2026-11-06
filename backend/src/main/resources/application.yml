@@ -1,0 +1,106 @@
+# =============================================================================
+# 服务脚手架模板 · 公共配置
+# -----------------------------------------------------------------------------
+# 密码不写在这里：通过 application-local.yml（已被 .gitignore 忽略）覆盖。
+# 第一次启动前请执行：
+#   copy src\main\resources\application-local.yml.example application-local.yml
+# 然后填写本机数据库密码。
+# =============================================================================
+
+server:
+  # 后端端口，前端 Vite 的 proxy 也指向这个
+  port: 8080
+
+spring:
+  application:
+    name: service-template
+
+  profiles:
+    # 默认激活 local，用于加载本机的数据库密码
+    active: local
+
+  datasource:
+    # 几个必填参数，缺一个就会连接失败，逐个说明：
+    #   serverTimezone        MySQL 8 驱动要求显式时区，否则可能差 8 小时
+    #   allowPublicKeyRetrieval  MySQL 8 默认 caching_sha2_password 认证，
+    #                         非 SSL 连接下不开启会报 "Public Key Retrieval is not allowed"
+    #   useUnicode/characterEncoding  避免中文乱码
+    #   rewriteBatchedStatements  开启后批量插入会合并成多值 INSERT，快一个量级
+    url: jdbc:mysql://localhost:3306/template_dev?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: template_app
+    # 由 application-local.yml 或环境变量 DB_PASSWORD 提供；留空会导致连接失败
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      # 个人项目并发很低，5 个连接足够；调大只会占着 MySQL 的连接数
+      maximum-pool-size: 5
+      minimum-idle: 1
+      # 获取连接超时 10 秒，避免数据库没起来时启动卡很久
+      connection-timeout: 10000
+
+  flyway:
+    enabled: true
+    # 迁移脚本位置，与 resources/db/migration 对应
+    locations: classpath:db/migration
+    # 首次接入已有数据库时自动建立基线，避免报 "found non-empty schema"
+    baseline-on-migrate: true
+    # 禁止 clean 命令：它会把整个库的表删光，误执行一次就得重来
+    clean-disabled: true
+    # 脚本编码，确保中文注释不乱码
+    encoding: UTF-8
+
+  jackson:
+    # 时区统一，避免 LocalDateTime 序列化后差 8 小时
+    time-zone: Asia/Shanghai
+    # null 字段也输出，前端拿到的字段集才是稳定的，不用到处判 undefined
+    default-property-inclusion: always
+
+mybatis-plus:
+  configuration:
+    # 数据库下划线字段自动映射到 Java 驼峰属性（create_time -> createTime）
+    map-underscore-to-camel-case: true
+    # SQL 日志：默认关闭。排查问题时改成
+    # org.apache.ibatis.logging.stdout.StdOutImpl 可打印每条 SQL
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    # 不在控制台打印 MyBatis-Plus 的 banner，保持启动日志干净
+    banner: false
+    db-config:
+      # 主键策略：雪花 ID。注意 Long 序列化成字符串的配置在 WebConfig 里，
+      # 否则前端 JS 处理 19 位数字会丢精度
+      id-type: assign_id
+
+# 应用自定义配置
+app:
+  jwt:
+    # JWT 签名密钥。HS256 要求至少 32 字节，否则 JJWT 会抛 WeakKeyException 导致启动失败。
+    # 这个值一旦泄露，任何人都能伪造令牌；一旦更换，所有已签发的令牌立即失效。
+    # 部署到公网前务必换成自己的随机串。
+    secret: 请改成一个至少32字节的随机字符串_ChangeMe_To_A_Random_Secret
+    # 令牌有效期（小时）。168 = 7 天
+    expire-hours: 168
+
+springdoc:
+  swagger-ui:
+    # 接口文档地址
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 只暴露 health，其他端点（env、beans 等）默认关闭，减少信息泄露面
+        include: health
+  endpoint:
+    health:
+      # 不展示数据库等组件的详细状态
+      show-details: never
+
+logging:
+  level:
+    root: info
+    # 只把自己的包放到 debug，方便开发时看流程；第三方保持 info 减少噪音
+    com.touki: debug

@@ -1,0 +1,52 @@
+/**
+ * 全局样式。
+ *
+ * 只放最基础的重置和几个跨页面复用的变量，
+ * 具体组件样式写在各自的 <style scoped> 里，避免这里变成一个巨型样式文件。
+ */
+
+:root {
+  /* 与 Element Plus 主色保持一致，改一处两边都变 */
+  --app-primary: #409eff;
+  --app-text: #303133;
+  --app-text-secondary: #909399;
+  --app-border: #e4e7ed;
+  --app-bg: #f5f7fa;
+  --app-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    'Helvetica Neue', Arial, sans-serif;
+  color: var(--app-text);
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 页面切换时的淡入，让跳转不那么生硬 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
