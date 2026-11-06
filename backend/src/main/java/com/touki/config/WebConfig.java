@@ -64,12 +64,12 @@ public class WebConfig implements WebMvcConfigurer {
      * 前者新增任何接口默认都是受保护的（安全默认）；后者一旦忘了把新接口
      * 放到约定的前缀下，接口就会裸奔，且这种问题很难在测试中发现。
      *
-     * <p>白名单当前只有登录接口一项。
-     * 将来要做公开接口（比如展示页需要读数据），按下面的形式追加一行即可：
-     * {@code .excludePathPatterns("/api/public/**")}，
-     * 并把公开接口统一放在那个前缀下，让"公开"这件事在路径上一眼可见。
-     *
-     * <p>Swagger 相关路径不在 {@code /api/**} 下，天然不受影响。
+     * <p>白名单只有两项：
+     * <ul>
+     *   <li>{@code /api/auth/login}：登录本身当然不能要求登录</li>
+     *   <li>{@code /api/portal/**}：展示页公开访问</li>
+     * </ul>
+     * Swagger 相关路径不在 {@code /api/**} 下，天然不受影响。
      *
      * @param registry 拦截器注册表
      */
@@ -77,8 +77,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
-                // 登录接口本身当然不能要求登录
-                .excludePathPatterns("/api/auth/login");
+                .excludePathPatterns("/api/auth/login")
+                .excludePathPatterns("/api/portal/**");
     }
 
     /**

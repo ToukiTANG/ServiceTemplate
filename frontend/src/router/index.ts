@@ -11,9 +11,6 @@ import { useUserStore } from '@/stores/user'
  *
  * 所有页面都用动态 import，让 vite 按路由拆包，
  * 首屏只加载展示端需要的代码，管理端的表格、表单等体积较大的组件延后加载。
- *
- * <p><b>新增页面时</b>：在对应父路由的 children 里加一条即可。
- * 站内页面不需要改拦截器，也不需要权限配置——认证只按 `/api/**` 前缀判断。
  */
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +23,11 @@ const router = createRouter({
           path: '',
           name: 'portal-home',
           component: () => import('@/views/portal/HomeView.vue')
+        },
+        {
+          path: 'tools/json',
+          name: 'json-tool',
+          component: () => import('@/views/portal/JsonToolView.vue')
         }
       ]
     },
@@ -40,10 +42,9 @@ const router = createRouter({
       component: () => import('@/layouts/AdminLayout.vue'),
       children: [
         {
-          // 管理端首页就是示例列表；有自己的业务时，改成 Dashboard 或直接指向业务首页
           path: '',
-          name: 'admin-items',
-          component: () => import('@/views/admin/ItemListView.vue')
+          name: 'admin-tools',
+          component: () => import('@/views/admin/ToolListView.vue')
         }
       ]
     },

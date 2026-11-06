@@ -1,113 +1,189 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-import { ArrowRight, Document, Grid, Lock } from '@element-plus/icons-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
+import { fetchPortalTools } from '@/api/tool'
+import type { PortalTool } from '@/types'
+import { groupByCategory, isExternalLink } from '@/utils/group'
 
 /**
- * 展示端首页。
+ * 展示端首页：工具卡片墙。
  *
- * 脚手架里这只是一个说明页，不承载任何业务：
- * - 告诉使用者这个模板提供了什么
- * - 给出管理端和接口文档的入口
- * - 提醒哪些地方是需要替换的
+ * 数据一次性拉全量（上架工具通常几十个，没必要分页），
+ * 搜索在前端做过滤，这样输入时没有任何网络延迟。
  *
- * <p><b>改造方向</b>：如果要做成门户/工具导航/产品介绍页，
- * 直接把内容换成自己的即可。PortalLayout 已经提供了顶栏和内容区，
- * 具体页面完全由业务决定。
+ * 手机上的调整：
+ * - 卡片固定单列（桌面上是 auto-fill 多列）
+ * - 标题字号下调
+ * - 卡片内边距和图标尺寸略缩
+ * - 去掉 hover 位移（触屏没有 hover，点了会停留在一个"浮起"的怪状态）
  */
 
-/** 关键入口，集中配置，方便以后改地址 */
-const entries = [
-  {
-    title: '管理端',
-    desc: '登录后可以体验一个完整的增删改查示例',
-    to: '/admin',
-    icon: Lock
+const router = useRouter()
+
+/** 首次加载中，用来显示骨架/加载态 */
+const loading = ref(true)
+
+/** 全量工具，只加载一次 */
+const tools = ref<PortalTool[]>([])
+
+/** 搜索关键词 */
+const keyword = ref('')
+
+/**
+ * 过滤 + 分组。
+ *
+ * 搜索匹配名称和描述，都转小写做不区分大小写的包含匹配。
+ * 关键词为空时直接返回全部分组，不额外拷贝数组。
+ */
+const groups = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  const filtered = kw
+    ? tools.value.filter(
+        (t) =>
+          t.name.toLowerCase().includes(kw) ||
+          (t.description ?? '').toLowerCase().includes(kw)
+      )
+    : tools.value
+  return groupByCategory(filtered)
+})
+
+/** 工具总数，显示在标题旁边 */
+const totalCount = computed(() => tools.value.length)
+
+onMounted(async () => {
+  try {
+    tools.value = await fetchPortalTools()
+  } catch {
+    // 错误提示已经由 request 拦截器统一弹出，这里只需要结束加载态
+  } finally {
+    loading.value = false
   }
-]
+})
+
+/**
+ * 打开工具。
+ *
+ * 外链新开标签页（noopener 防止被打开的页面通过 window.opener 反向操作本站），
+ * 站内路径交给路由处理，保持 SPA 体验。
+ */
+function openTool(tool: PortalTool): void {
+  if (isExternalLink(tool.link)) {
+    window.open(tool.link, '_blank', 'noopener,noreferrer')
+  } else {
+    void router.push(tool.link)
+  }
+}
 </script>
 
 <template>
   <div class="home">
     <section class="hero">
-      <h1 class="hero-title">ServiceTemplate</h1>
-      <p class="hero-sub">
-        一个 Java + Vue 的服务脚手架。已包含登录认证、统一响应、分页、数据库迁移，
-        以及一个可以照抄的示例模块。
-      </p>
-
-      <div class="entry-list">
-        <RouterLink v-for="item in entries" :key="item.to" :to="item.to" class="entry">
-          <el-icon :size="20" class="entry-icon"><component :is="item.icon" /></el-icon>
-          <div class="entry-body">
-            <div class="entry-title">{{ item.title }}</div>
-            <div class="entry-desc">{{ item.desc }}</div>
-          </div>
-          <el-icon class="entry-arrow"><ArrowRight /></el-icon>
-        </RouterLink>
-
-        <a
-          href="http://localhost:8080/swagger-ui.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="entry"
-        >
-          <el-icon :size="20" class="entry-icon"><Document /></el-icon>
-          <div class="entry-body">
-            <div class="entry-title">接口文档</div>
-            <div class="entry-desc">Swagger UI，登录接口返回的 token 可以直接在页面里调试</div>
-          </div>
-          <el-icon class="entry-arrow"><ArrowRight /></el-icon>
-        </a>
-      </div>
+      <h1 class="hero-title">我的工具箱</h1>
+      <p class="hero-sub">常用小工具集中在这里，点一下就能用。</p>
+      <el-input
+        v-model="keyword"
+        class="hero-search"
+        placeholder="搜索工具名称或描述"
+        :prefix-icon="Search"
+        clearable
+      />
     </section>
 
-    <section class="note">
-      <h2 class="note-title">
-        <el-icon><Grid /></el-icon>
-        这个模板包含什么
-      </h2>
-      <ul class="note-list">
-        <li>统一响应体、全局异常、参数校验、分页封装</li>
-        <li>JWT 登录、拦截器鉴权、BCrypt 密码</li>
-        <li>Flyway 管理表结构，启动自动建表</li>
-        <li>Swagger 接口文档，前端 axios 封装与 401 处理</li>
-        <li>管理端布局 + 一个完整的示例 CRUD（可整块删除）</li>
-      </ul>
-      <p class="note-tip">
-        开始写业务前，建议先读 <code>docs/conventions.md</code>，
-        里面写了新增接口、页面、数据表的固定步骤。
-      </p>
-    </section>
+    <!-- 加载中也走骨架，避免布局从空白突然跳成卡片墙 -->
+    <div v-if="loading" class="tool-skeleton">
+      <el-skeleton :rows="3" animated />
+    </div>
+
+    <template v-else>
+      <el-empty v-if="groups.length === 0" description="没有找到匹配的工具" />
+
+      <section v-for="group in groups" :key="group.category" class="group">
+        <h2 class="group-title">
+          {{ group.category }}
+          <span class="group-count">{{ group.items.length }}</span>
+        </h2>
+
+        <div class="card-grid">
+          <article
+            v-for="tool in group.items"
+            :key="tool.id"
+            class="tool-card"
+            role="button"
+            tabindex="0"
+            @click="openTool(tool)"
+            @keydown.enter="openTool(tool)"
+          >
+            <div class="card-icon">{{ tool.icon || '🔧' }}</div>
+            <div class="card-body">
+              <div class="card-name">{{ tool.name }}</div>
+              <div class="card-desc">{{ tool.description || '暂无描述' }}</div>
+            </div>
+            <div class="card-arrow">↗</div>
+          </article>
+        </div>
+      </section>
+    </template>
+
+    <p v-if="!loading && totalCount > 0" class="total-hint">共 {{ totalCount }} 个工具</p>
   </div>
 </template>
 
 <style scoped>
 .hero {
-  padding: 24px 0 8px;
+  padding: 8px 0 24px;
 }
 
 .hero-title {
-  margin: 0 0 10px;
-  font-size: 30px;
+  margin: 0 0 8px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.5px;
 }
 
 .hero-sub {
-  max-width: 640px;
-  margin: 0 0 28px;
-  font-size: 14px;
-  line-height: 1.7;
+  margin: 0 0 20px;
   color: var(--app-text-secondary);
+  font-size: 14px;
 }
 
-.entry-list {
+.hero-search {
+  max-width: 420px;
+}
+
+.tool-skeleton {
+  padding: 40px 0;
+}
+
+.group {
+  margin-bottom: 32px;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.group-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--app-text-secondary);
+  background: #fff;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
 
-.entry {
+.tool-card {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -115,108 +191,106 @@ const entries = [
   background: #fff;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.entry:hover {
+.tool-card:hover {
+  transform: translateY(-2px);
   border-color: var(--app-primary);
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
 }
 
-.entry-icon {
-  color: var(--app-primary);
+.card-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: var(--app-bg);
+  border-radius: 10px;
 }
 
-.entry-body {
+.card-body {
   flex: 1;
   min-width: 0;
 }
 
-.entry-title {
+.card-name {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 2px;
 }
 
-.entry-desc {
+.card-desc {
   font-size: 12px;
   color: var(--app-text-secondary);
-  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.entry-arrow {
+.card-arrow {
   color: var(--app-text-secondary);
-  opacity: 0.4;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.note {
-  margin-top: 32px;
-  padding: 20px;
-  background: #fff;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
+.tool-card:hover .card-arrow {
+  opacity: 1;
 }
 
-.note-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.note-list {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 13px;
-  line-height: 1.9;
-  color: var(--app-text);
-}
-
-.note-tip {
-  margin: 14px 0 0;
+.total-hint {
+  margin-top: 8px;
+  text-align: center;
   font-size: 12px;
   color: var(--app-text-secondary);
 }
 
-.note-tip code {
-  padding: 1px 5px;
-  background: var(--app-bg);
-  border-radius: 4px;
-  font-family: Consolas, Monaco, monospace;
-}
-
+/* 手机：单列卡片 + 收窄间距 + 去掉触屏上的 hover 位移 */
 @media (max-width: 767px) {
   .hero {
-    padding: 8px 0;
+    padding: 4px 0 18px;
   }
 
   .hero-title {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .hero-sub {
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     font-size: 13px;
   }
 
-  .entry-list {
+  .hero-search {
+    max-width: 100%;
+  }
+
+  .group {
+    margin-bottom: 24px;
+  }
+
+  .card-grid {
+    /* 手机上不做多列：卡片里有图标 + 两行文字，两列会挤成一团 */
     grid-template-columns: 1fr;
     gap: 10px;
   }
 
-  .entry {
-    padding: 14px;
+  .tool-card {
+    padding: 12px 14px;
   }
 
-  .entry:hover {
+  /* 触屏没有真正的 hover，:hover 会在点击后残留，视觉上像卡住了 */
+  .tool-card:hover {
+    transform: none;
     box-shadow: none;
   }
 
-  .note {
-    margin-top: 24px;
-    padding: 16px;
+  .card-arrow {
+    /* 手机上没有 hover 提示，箭头始终显示，给一点点击引导 */
+    opacity: 0.5;
   }
 }
 </style>

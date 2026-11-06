@@ -37,30 +37,48 @@ export interface LoginResult {
   user: UserInfo
 }
 
-// ==================== 示例模块（删除 demo 时可整段删掉） ====================
-
-/** 示例数据（与 DemoItemVO 对应） */
-export interface DemoItem {
+/** 工具（管理端，字段最全） */
+export interface Tool {
   id: string
   name: string
-  /** 1 启用 / 0 停用 */
+  description: string | null
+  icon: string | null
+  link: string
+  category: string
+  sort: number
+  /** 1 上架 / 0 下架 */
   status: number
-  remark: string | null
   createTime?: string
   updateTime?: string
 }
 
-/** 示例数据分页查询条件 */
-export interface DemoItemQuery {
+/** 工具（展示端，只有渲染卡片需要的字段） */
+export interface PortalTool {
+  id: string
+  name: string
+  description: string | null
+  icon: string | null
+  link: string
+  category: string
+  sort: number
+}
+
+/** 管理端列表查询条件 */
+export interface ToolQuery {
   pageNum: number
   pageSize: number
   name?: string
+  category?: string
   status?: number
 }
 
-/** 示例数据新增/修改提交体 */
-export interface DemoItemPayload {
+/** 新增/修改工具的提交体 */
+export interface ToolPayload {
   name: string
+  description?: string
+  icon?: string
+  link: string
+  category?: string
+  sort?: number
   status?: number
-  remark?: string
 }

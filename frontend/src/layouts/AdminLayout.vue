@@ -32,7 +32,7 @@ const drawerVisible = ref(false)
  * icon 存的是组件对象而不是名字字符串，配合 `<component :is="...">` 使用，
  * 好处是类型安全，且不需要维护「名字 → 组件」的映射表。
  */
-const menus = [{ path: '/admin', title: '示例数据', icon: House }]
+const menus = [{ path: '/admin', title: '工具管理', icon: House }]
 
 /** 当前高亮项跟随路由，将来有子页面时也不用改 */
 const activeMenu = computed(() => route.path)
@@ -129,7 +129,7 @@ function handleMenuSelect(): void {
             text
             @click="drawerVisible = true"
           />
-          <span class="header-title">示例数据</span>
+          <span class="header-title">工具管理</span>
         </div>
 
         <el-dropdown trigger="click">

@@ -21,7 +21,7 @@ import { Grid } from '@element-plus/icons-vue'
       <div class="header-inner">
         <RouterLink to="/" class="brand">
           <el-icon :size="20"><Grid /></el-icon>
-          <span>ServiceTemplate</span>
+          <span>工具站</span>
         </RouterLink>
 
         <nav class="portal-nav">
@@ -39,7 +39,7 @@ import { Grid } from '@element-plus/icons-vue'
     </main>
 
     <footer class="portal-footer">
-      <span>ServiceTemplate · Java + Vue 服务脚手架</span>
+      <span>个人工具合集 · 持续收集中</span>
     </footer>
   </div>
 </template>
