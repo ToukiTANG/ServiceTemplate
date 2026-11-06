@@ -20,13 +20,21 @@ spring:
     active: local
 
   datasource:
-    # 几个必填参数，缺一个就会连接失败，逐个说明：
+    # 库名走环境变量 DB_NAME，默认 template_dev。
+    # 这样同一份代码可以在不同的库上跑——每个项目、每个业务分支用自己的库，
+    # 彼此的表结构和迁移历史完全隔离，不会互相干扰。
+    #
+    # 用法（PowerShell）：
+    #   $env:DB_NAME='toolbox_dev'; mvn spring-boot:run
+    # 或者直接在 application-local.yml 里覆盖 spring.datasource.url。
+    #
+    # 几个必填参数，缺一个就会连接失败：
     #   serverTimezone        MySQL 8 驱动要求显式时区，否则可能差 8 小时
     #   allowPublicKeyRetrieval  MySQL 8 默认 caching_sha2_password 认证，
     #                         非 SSL 连接下不开启会报 "Public Key Retrieval is not allowed"
     #   useUnicode/characterEncoding  避免中文乱码
     #   rewriteBatchedStatements  开启后批量插入会合并成多值 INSERT，快一个量级
-    url: jdbc:mysql://localhost:3306/template_dev?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    url: jdbc:mysql://localhost:3306/${DB_NAME:template_dev}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     username: template_app
     # 由 application-local.yml 或环境变量 DB_PASSWORD 提供；留空会导致连接失败
     password: ${DB_PASSWORD:}

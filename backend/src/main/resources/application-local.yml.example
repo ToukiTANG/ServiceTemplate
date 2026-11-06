@@ -12,3 +12,14 @@ spring:
   datasource:
     # 与 scripts/init-db.sql 里创建的账号密码保持一致
     password: 改成你自己的密码
+
+    # 可选：指定数据库。
+    #
+    # 优先级：下面的 url 覆盖 > 环境变量 DB_NAME > application.yml 里的默认值 template_dev。
+    #
+    # 二选一即可：
+    #   1) 环境变量（推荐，切换方便，不产生未跟踪文件）
+    #        $env:DB_NAME='toolbox_dev'; mvn spring-boot:run
+    #   2) 直接在这里写死整个 url
+    #
+    # url: jdbc:mysql://localhost:3306/toolbox_dev?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true

@@ -140,6 +140,35 @@ npm run dev
 
 ---
 
+## 数据库规划：一个业务一个库
+
+约定每个项目、每个业务分支使用**独立的数据库**，不复用同一个库。原因：
+
+1. 不同分支的 Flyway 迁移脚本不同，共用一个库会校验和不匹配
+2. 业务数据互相隔离，删库重建互不影响
+3. 将来某个业务要单独迁移或备份时，边界清晰
+
+库名通过环境变量 `DB_NAME` 指定，默认是 `template_dev`：
+
+```powershell
+# 换成业务库
+$env:DB_NAME='toolbox_dev'; mvn spring-boot:run
+
+# 或者写进 application-local.yml（见 .example 文件里的说明）
+```
+
+新建业务库时，把 `scripts/init-db.sql` 里的建库语句复制一份改库名即可：
+
+```sql
+CREATE DATABASE IF NOT EXISTS `toolbox_dev`
+    DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+GRANT ALL PRIVILEGES ON `toolbox_dev`.* TO 'template_app'@'localhost';
+```
+
+同一个账号 `template_app` 授权一次就能访问所有新建的库；想每个业务用独立账号，把 `CREATE USER` 也复制一份改掉。
+
+---
+
 ## 开始写自己的业务
 
 示例模块涉及这些文件，**可以整体删除**：
