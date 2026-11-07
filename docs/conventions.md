@@ -2,28 +2,28 @@
 
 这份文档回答「要加一个新东西，应该改哪些文件」。照着步骤做，代码风格和现有代码自然一致。
 
-所有例子都以 `demo` 模块为参照——它就是用来被抄的。
+所有例子都以 `order` 模块为参照——它就是用来被抄的。
 
 ---
 
 ## 一、新增一个后端接口
 
-以「给示例数据加一个复制功能」为例，接口是 `POST /api/admin/items/{id}/copy`。
+以「给示例数据加一个复制功能」为例，接口是 `POST /api/admin/orders/{id}/copy`。
 
 ### 1. 分层职责
 
 | 层 | 放哪 | 职责 |
 |---|---|---|
-| Controller | `demo/DemoItemController.java` | 接参数、调 Service、返回 `R<T>` |
-| Service | `demo/DemoItemService.java` | 业务逻辑与事务边界 |
-| DTO / VO | `demo/dto/`、`demo/vo/` | 入参出参，**不要直接暴露实体** |
+| Controller | `order/OrderController.java` | 接参数、调 Service、返回 `R<T>` |
+| Service | `order/OrderService.java` | 业务逻辑与事务边界 |
+| DTO / VO | `order/dto/`、`order/vo/` | 入参出参，**不要直接暴露实体** |
 
 ### 2. Controller
 
 ```java
 @PostMapping("/{id}/copy")
 @Operation(summary = "复制")
-public R<DemoItemVO> copy(@PathVariable Long id) {
+public R<OrderVO> copy(@PathVariable Long id) {
     return R.ok(itemService.copy(id));
 }
 ```
@@ -39,10 +39,10 @@ public R<DemoItemVO> copy(@PathVariable Long id) {
 
 ```java
 @Transactional(rollbackFor = Exception.class)
-public DemoItemVO copy(Long id) {
-    DemoItem source = getExisting(id);
+public OrderVO copy(Long id) {
+    Order source = getExisting(id);
 
-    DemoItem copy = new DemoItem();
+    Order copy = new Order();
     copy.setName(source.getName() + " 副本");
     copy.setStatus(source.getStatus());
     copy.setRemark(source.getRemark());
@@ -75,8 +75,8 @@ public DemoItemVO copy(Long id) {
 
 ```ts
 // api/item.ts
-export function copyItem(id: string): Promise<DemoItem> {
-  return http.post<DemoItem>(`/admin/items/${id}/copy`)
+export function copyItem(id: string): Promise<Order> {
+  return http.post<Order>(`/admin/orders/${id}/copy`)
 }
 ```
 
@@ -112,7 +112,7 @@ src/views/portal/ 展示端页面（公开）
 ```ts
 const menus = [
   { path: '/admin', title: '示例数据', icon: House },
-  { path: '/admin/items', title: '我的业务', icon: Grid }
+  { path: '/admin/orders', title: '我的业务', icon: Grid }
 ]
 ```
 
@@ -127,7 +127,7 @@ const menus = [
 在 `backend/src/main/resources/db/migration/` 下新建 `V003__xxx.sql`，编号必须连续。
 
 ```sql
-CREATE TABLE demo_xxx
+CREATE TABLE order_xxx
 (
     id          BIGINT       NOT NULL COMMENT '主键，雪花 ID',
     name        VARCHAR(50)  NOT NULL COMMENT '名称',
@@ -152,8 +152,8 @@ CREATE TABLE demo_xxx
 ```java
 @Getter
 @Setter
-@TableName("demo_xxx")
-public class DemoXxx extends BaseEntity {
+@TableName("order_xxx")
+public class OrderXxx extends BaseEntity {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     private String name;
@@ -167,7 +167,7 @@ public class DemoXxx extends BaseEntity {
 
 ```java
 @Mapper
-public interface DemoXxxMapper extends BaseMapper<DemoXxx> {
+public interface OrderXxxMapper extends BaseMapper<OrderXxx> {
 }
 ```
 

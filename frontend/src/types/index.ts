@@ -4,6 +4,9 @@
  * 与后端 VO 一一对应。注意 id 是 string 而不是 number：
  * 后端用雪花 ID（19 位 Long），序列化时已统一转成字符串，
  * 前端如果用 number 接收会丢精度（超过 2^53 的部分变成 0）。
+ *
+ * 业务类型不要往这里堆。各模块自己建文件（如 {@code types/transfer.ts}），
+ * 这样本文件在脚手架分支和业务分支上保持一致，merge 时不会冲突。
  */
 
 /** 后端统一响应体 */
@@ -35,32 +38,4 @@ export interface UserInfo {
 export interface LoginResult {
   token: string
   user: UserInfo
-}
-
-// ==================== 示例模块（删除 demo 时可整段删掉） ====================
-
-/** 示例数据（与 DemoItemVO 对应） */
-export interface DemoItem {
-  id: string
-  name: string
-  /** 1 启用 / 0 停用 */
-  status: number
-  remark: string | null
-  createTime?: string
-  updateTime?: string
-}
-
-/** 示例数据分页查询条件 */
-export interface DemoItemQuery {
-  pageNum: number
-  pageSize: number
-  name?: string
-  status?: number
-}
-
-/** 示例数据新增/修改提交体 */
-export interface DemoItemPayload {
-  name: string
-  status?: number
-  remark?: string
 }

@@ -40,12 +40,13 @@ const router = createRouter({
       component: () => import('@/layouts/AdminLayout.vue'),
       children: [
         {
-          // 管理端首页就是示例列表；有自己的业务时，改成 Dashboard 或直接指向业务首页
+          // 脚手架没有业务，首页就是一个说明性的工作台。
+          // 写了第一个业务页面后，把这里换成真正的 Dashboard 或直接指向业务首页。
           path: '',
-          name: 'admin-items',
-          component: () => import('@/views/admin/ItemListView.vue'),
+          name: 'admin-dashboard',
+          component: () => import('@/views/admin/DashboardView.vue'),
           // meta.menu 为 true 的路由会自动出现在左侧菜单里（见 AdminLayout）
-          meta: { menu: true, title: '示例数据', icon: 'House', order: 1 }
+          meta: { menu: true, title: '工作台', icon: 'Monitor', order: 1 }
         }
       ]
     },

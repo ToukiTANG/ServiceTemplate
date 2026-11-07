@@ -1,18 +1,20 @@
 -- =============================================================================
 -- V001 · 初始化表结构
 -- -----------------------------------------------------------------------------
+-- 脚手架只建一张表：sys_user。
+--
+-- 业务表由各业务分支自己的迁移脚本负责（例如 feature/toolbox 的 V001 里还有 tool 表）。
+-- 这样脚手架保持"零业务"，新项目从空库启动时不会多出一张用不到的表。
+--
 -- 说明：
 --   1. 表结构只由 Flyway 管理，MyBatis-Plus 的自动建表已关闭。改字段请新增
---      V002__xxx.sql，不要修改本文件（已执行的脚本再改会导致校验和不匹配）。
+--      V00X__xxx.sql，不要修改本文件（已执行的脚本再改会导致校验和不匹配）。
 --   2. 所有标识符小写：本机 MySQL 的 lower_case_table_names=1，写大写也能跑，
 --      但部署到 Linux（该值为 0）会报表不存在。
 --   3. 主键统一 BIGINT 雪花 ID，由应用生成，不用 AUTO_INCREMENT。
 --   4. 时间列用 DATETIME 而非 TIMESTAMP：TIMESTAMP 有 2038 年上限，且受时区影响。
 -- =============================================================================
 
--- -----------------------------------------------------------------------------
--- 用户表
--- -----------------------------------------------------------------------------
 CREATE TABLE `sys_user`
 (
     `id`          BIGINT       NOT NULL COMMENT '主键，雪花 ID',
@@ -28,25 +30,3 @@ CREATE TABLE `sys_user`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT ='用户';
-
--- -----------------------------------------------------------------------------
--- 示例表
---
--- 这张表属于"示例模块"，和 com.touki.demo 包下的代码是一套。
--- 开始写真正业务时，可以把这张表、示例代码、以及示例页面一起删掉：
--- 新增一个 V00X__drop_demo_item.sql 执行 DROP TABLE 即可。
--- -----------------------------------------------------------------------------
-CREATE TABLE `demo_item`
-(
-    `id`          BIGINT      NOT NULL COMMENT '主键，雪花 ID',
-    `name`        VARCHAR(50) NOT NULL COMMENT '名称',
-    `status`      TINYINT     NOT NULL DEFAULT 1 COMMENT '1 启用 / 0 停用',
-    `remark`      VARCHAR(200)         DEFAULT NULL COMMENT '备注',
-    `create_time` DATETIME             DEFAULT NULL COMMENT '创建时间',
-    `update_time` DATETIME             DEFAULT NULL COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    -- 名称唯一，由数据库兜底；业务层的重复校验在 DemoItemService.assertNameUnique
-    UNIQUE KEY `uk_name` (`name`)
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci COMMENT ='示例数据（可删除）';

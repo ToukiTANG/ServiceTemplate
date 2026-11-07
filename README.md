@@ -2,7 +2,7 @@
 
 一个可以直接拿来用的个人项目骨架。后端 Spring Boot 4 + MyBatis-Plus + Flyway，前端 Vue 3 + Element Plus + TypeScript。
 
-**脚手架只包含基础能力，不包含任何具体业务。** 里面有一个极简的示例模块（一张表 + 一个 CRUD + 一个列表页），作用是演示"一个功能要写哪些文件、按什么顺序写"，开始做真实业务时把它整块删掉即可。
+**脚手架只包含基础能力，不含任何业务代码**——没有示例表、没有示例页面、没有业务接口。想看一个完整业务长什么样（公开展示页 + 管理端 + 文件传输），切到 `feature/toolbox` 分支。
 
 > 想要看一个完整业务长什么样（公开展示页 + 管理端 + 工具卡片墙），切到 `feature/toolbox` 分支。
 
@@ -22,7 +22,7 @@
 | 接口文档 | springdoc + Swagger UI，带 bearerAuth |
 | 前端封装 | axios 实例、token 注入、code 解包、401 跳登录 |
 | 前端布局 | 展示端（公开）+ 管理端（登录）两套布局，均已做移动端适配 |
-| 示例模块 | `demo_item` 表 + 完整 CRUD + 列表页 + 弹窗 |
+| 管理端工作台 | 一个说明性首页，告诉你在哪加业务页面 |
 
 ## 不包含什么
 
@@ -63,7 +63,7 @@ ServiceTemplate/
 │       │   ├── config/             MyBatis-Plus、拦截器、OpenAPI、初始化
 │       │   ├── auth/               登录、JWT、密码修改
 │       │   ├── user/               用户实体与查询
-│       │   └── demo/               示例模块（可整块删除）
+│       │   └── （业务包加在这里）
 │       └── resources/
 │           ├── application.yml
 │           ├── application-local.yml   本机配置（已 gitignore）
@@ -112,7 +112,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-首次启动时 Flyway 自动建表并插入 3 条示例数据；`DataInitializer` 检测到用户表为空，会创建默认管理员 `admin / admin123`。
+首次启动时 Flyway 自动建表（只有一张 `sys_user`）；`DataInitializer` 检测到用户表为空，会创建默认管理员 `admin / admin123`。
 
 - 接口：`http://localhost:8080`
 - 健康检查：`http://localhost:8080/actuator/health`
@@ -169,22 +169,45 @@ GRANT ALL PRIVILEGES ON `toolbox_dev`.* TO 'template_app'@'localhost';
 
 ---
 
-## 开始写自己的业务
+## 写第一个业务
 
-示例模块涉及这些文件，**可以整体删除**：
+脚手架里没有任何业务代码，所以第一件事是自己建一个包。以「订单」为例，后端：
 
 ```
-后端：backend/src/main/java/com/touki/demo/   （7 个类）
-      迁移脚本里的 demo_item 建表与初始数据
-前端：src/api/item.ts
-      src/views/admin/ItemListView.vue
-      src/views/admin/ItemFormDialog.vue
-      src/types/index.ts 里的 DemoItem 系列类型
-路由：src/router/index.ts 里 /admin 的子路由指向
-菜单：src/layouts/AdminLayout.vue 的 menus 数组
+backend/src/main/java/com/touki/
+└── order/
+    ├── Order.java              实体，继承 BaseEntity
+    ├── OrderMapper.java        @Mapper + BaseMapper
+    ├── OrderService.java       业务逻辑与事务
+    ├── OrderController.java    /api/admin/orders
+    ├── OrderError.java         错误码，实现 ErrorItem
+    ├── dto/OrderSaveDTO.java   入参，带校验注解
+    └── vo/OrderVO.java         出参
 ```
 
-新增自己的模块时，照着示例的结构写一遍即可，步骤见 `docs/conventions.md`。
+前端三个文件：
+
+```
+frontend/src/
+├── api/order.ts
+├── types/order.ts
+└── views/admin/
+    ├── OrderListView.vue
+    └── OrderFormDialog.vue
+```
+
+然后在 `router/index.ts` 的 `/admin` 子路由里加一条，带上
+`meta: { menu: true, title: '订单管理', icon: 'List', order: 2 }`——左侧菜单会自动出现，
+不用去改 `AdminLayout`。
+
+### 想抄一个现成的
+
+切到 `feature/toolbox` 分支，那里有两个完整模块可以参照：
+
+- `tool` —— 卡片管理，含公开展示页（列表 + 卡片墙 + 分类分组）
+- `transfer` —— 文件传输，含分片上传、断点续传、提取码下载、定时清理
+
+一步步的操作见 `docs/conventions.md`。
 
 ---
 
@@ -205,7 +228,7 @@ pwsh scripts/rename-project.ps1 -Package com.yourname.yourproject           # �
 
 | 分支 | 内容 |
 |---|---|
-| `main` | 脚手架骨架：基础能力 + 极简示例 |
+| `main` | 脚手架骨架：只有基础能力，**零业务代码** |
 | `feature/toolbox` | 一个完整的实际项目（工具站：公开展示页 + 管理端），基于 main 开发 |
 
 业务分支的改动不会污染脚手架；脚手架修了通用问题，可以 merge 到业务分支。

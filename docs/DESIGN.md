@@ -83,7 +83,7 @@ ServiceTemplate/
 │       │   ├── config/           Web（拦截器/BCrypt/Jackson）、MyBatis-Plus、OpenAPI、DataInitializer
 │       │   ├── auth/             JwtUtil、JwtInterceptor、AuthService、AuthController、dto/vo
 │       │   ├── user/             SysUser、SysUserMapper、vo/UserVO
-│       │   └── demo/             示例模块（可整块删除）
+│       │   └── order/            （业务包加在这里）（可整块删除）
 │       └── resources/
 │           ├── application.yml           公共配置
 │           ├── application-local.yml     本机密码（gitignore）
@@ -114,7 +114,9 @@ ServiceTemplate/
 | 表 | 用途 |
 |---|---|
 | `sys_user` | 用户（id、username、password、nickname、status、时间戳） |
-| `demo_item` | 示例（id、name、status、remark、时间戳），可删除 |
+
+> 脚手架**不建任何业务表**。写业务时新增 `V00X__xxx.sql` 自己建，
+> 可参考 `feature/toolbox` 分支里的 `tool`（卡片）与 `transfer_file`（文件传输）。
 
 约定：
 
@@ -126,7 +128,7 @@ ServiceTemplate/
 
 ### 4.1 命名规范（强制）
 
-> Windows 上 MySQL 默认 `lower_case_table_names=1`，写 `SELECT * FROM Demo_Item` 也能跑；
+> Windows 上 MySQL 默认 `lower_case_table_names=1`，写 `SELECT * FROM Order` 也能跑；
 > 部署到 Linux（该值为 0）会直接报表不存在。
 
 - 库名、表名、字段名、索引名 **一律小写 + 下划线**
@@ -274,12 +276,12 @@ Swagger 在 `/swagger-ui.html`，`@Tag` + `@Operation(summary = "中文")`，
 | POST | `/api/auth/login` | 公开 |
 | GET | `/api/auth/me` | 需登录 |
 | PUT | `/api/auth/password` | 需登录 |
-| GET | `/api/admin/items` | 需登录 |
-| GET | `/api/admin/items/{id}` | 需登录 |
-| POST | `/api/admin/items` | 需登录 |
-| PUT | `/api/admin/items/{id}` | 需登录 |
-| DELETE | `/api/admin/items/{id}` | 需登录 |
-| PATCH | `/api/admin/items/{id}/status?status=` | 需登录 |
+| GET | `/api/admin/orders` | 需登录 |
+| GET | `/api/admin/orders/{id}` | 需登录 |
+| POST | `/api/admin/orders` | 需登录 |
+| PUT | `/api/admin/orders/{id}` | 需登录 |
+| DELETE | `/api/admin/orders/{id}` | 需登录 |
+| PATCH | `/api/admin/orders/{id}/status?status=` | 需登录 |
 
 `items` 这一组是示例，删掉示例模块时一并删除。
 
@@ -357,11 +359,11 @@ async function handleUnauthorized(): Promise<void> { ... }
 
 | 类别 | 规则 | 示例 |
 |---|---|---|
-| 包名 | 全小写 | `com.touki.demo` |
-| 类名 | 大驼峰 | `DemoItemService` |
+| 包名 | 全小写 | `com.touki.order` |
+| 类名 | 大驼峰 | `OrderService` |
 | 方法/变量 | 小驼峰 | `pageItems` |
 | 常量 | 全大写 + 下划线 | `MAX_PAGE_SIZE` |
-| DTO / VO | 业务名 + 后缀 | `DemoItemSaveDTO`、`DemoItemVO` |
+| DTO / VO | 业务名 + 后缀 | `OrderSaveDTO`、`OrderVO` |
 | 数据库字段 | 小写下划线 | `create_time` |
 | 前端组件 | 大驼峰 | `ItemFormDialog.vue` |
 | 前端页面 | 大驼峰 + `View` | `ItemListView.vue` |
@@ -408,3 +410,4 @@ cd frontend && npm install && npm run dev
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-11-06 | v3.0 | 从"工具站设计"中剥离出脚手架部分：数据模型改为 `sys_user` + `demo_item`，接口缩到 9 个，删除双端业务描述；业务设计移交 `feature/toolbox` |
+| 2026-11-07 | v3.1 | **移除示例模块**，脚手架变成零业务：删 `demo` 包与 `demo_item` 表，管理端首页改为说明性工作台；错误码按模块拆分（`ErrorItem` 接口）、登录白名单与站点名配置化、管理端菜单由路由 `meta` 生成——目标是让通用文件在两个分支上完全一致，改脚手架不再产生 merge 冲突 |
