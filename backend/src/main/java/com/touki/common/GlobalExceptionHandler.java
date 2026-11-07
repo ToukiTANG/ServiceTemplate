@@ -5,9 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -67,6 +69,38 @@ public class GlobalExceptionHandler {
         log.warn("参数校验失败: {}", detail);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(R.fail(ErrorCode.PARAM_INVALID.getCode(), detail));
+    }
+
+    /**
+     * 请求方法不支持：HTTP 405。
+     *
+     * <p>典型场景是用 GET 访问只接受 POST 的接口。这类请求以前会落到下面的兜底分支、
+     * 被当成 500 返回"系统异常"，让调用方误以为是服务端 bug，排查起来很费劲。
+     * 单独拎出来既符合 HTTP 语义，也能直接告诉对方到底哪儿错了。
+     *
+     * @param e 异常，含实际用的方法和该接口支持的方法
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<R<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        // 支持的方法列表由 Spring 从 @RequestMapping 推断，直接打进日志便于定位
+        log.warn("请求方法不支持: {}，该接口支持 {}", e.getMethod(), e.getSupportedHttpMethods());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(R.fail(ErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    /**
+     * 路径不存在：HTTP 404。
+     *
+     * <p>Spring 6.1 起，访问不存在的路径抛的是 {@link NoResourceFoundException}，
+     * 它属于"预期内"的失败，不该被下面的兜底分支当成 500。
+     *
+     * @param e 异常，含请求的路径
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<R<Void>> handleNoResourceFound(NoResourceFoundException e) {
+        log.debug("路径不存在: {}", e.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(R.fail(ErrorCode.NOT_FOUND));
     }
 
     /**
