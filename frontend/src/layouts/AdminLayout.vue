@@ -27,6 +27,9 @@ const userStore = useUserStore()
 /** 是否为手机尺寸，由媒体查询驱动，CSS 与 JS 共用 767px 这个断点 */
 const isMobile = useIsMobile()
 
+/** 站点名，与 PortalLayout 共用同一个环境变量（.env 的 VITE_APP_NAME） */
+const appName = import.meta.env.VITE_APP_NAME || 'ServiceTemplate'
+
 /** 移动端抽屉菜单是否展开 */
 const drawerVisible = ref(false)
 
@@ -100,7 +103,7 @@ function handleMenuSelect(): void {
     <el-aside v-if="!isMobile" width="216px" class="admin-aside">
       <div class="aside-logo">
         <el-icon :size="18"><Grid /></el-icon>
-        <span>工具站后台</span>
+        <span>{{ appName }} 后台</span>
       </div>
 
       <el-menu :default-active="activeMenu" router class="aside-menu">
@@ -130,7 +133,7 @@ function handleMenuSelect(): void {
       <div class="drawer-inner">
         <div class="aside-logo">
           <el-icon :size="18"><Grid /></el-icon>
-          <span>工具站后台</span>
+          <span>{{ appName }} 后台</span>
         </div>
 
         <el-menu :default-active="activeMenu" router class="aside-menu" @select="handleMenuSelect">
