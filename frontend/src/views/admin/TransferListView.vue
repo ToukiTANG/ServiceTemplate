@@ -100,6 +100,37 @@ function formatSize(bytes: number): string {
   return `${bytes} B`
 }
 
+/**
+ * 拼完整的下载链接。
+ *
+ * 用 {@code window.location.origin} 而不是配置里的域名：
+ * 管理端从哪个域名打开，生成的就是那个域名，本地调试和线上部署都不用改配置。
+ */
+function buildLink(code: string): string {
+  return `${window.location.origin}/transfer/${code}`
+}
+
+/**
+ * 复制下载链接到剪贴板。
+ *
+ * 只传一个 status=0 的记录（上传中、还没提取码）时直接忽略，
+ * 避免复制出一条打不开的链接。
+ */
+async function copyLink(row: TransferAdminItem): Promise<void> {
+  if (!row.code) {
+    ElMessage.warning('该记录还没有提取码')
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(buildLink(row.code))
+    ElMessage.success('链接已复制')
+  } catch {
+    // 非 https 环境（且非 localhost）下 clipboard API 不可用
+    ElMessage.warning('当前环境不支持自动复制，请手动选中链接')
+  }
+}
+
 onMounted(() => {
   void load()
 })
@@ -136,21 +167,38 @@ onMounted(() => {
     <el-card shadow="never">
       <div class="table-wrap">
         <el-table v-loading="loading" :data="list" stripe style="width: 100%">
-          <el-table-column prop="fileName" label="文件名" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="fileName" label="文件名" :min-width="isMobile ? 90 : 160" show-overflow-tooltip />
 
-          <el-table-column label="大小" width="100">
+          <el-table-column v-if="!isMobile" label="大小" width="100">
             <template #default="{ row }">{{ formatSize(row.fileSize) }}</template>
           </el-table-column>
 
-          <el-table-column prop="code" label="提取码" width="110">
+          <el-table-column prop="code" label="提取码" :width="isMobile ? 96 : 110">
             <template #default="{ row }">
               <span class="code-cell">{{ row.code }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column prop="downloadCount" label="下载" width="80" align="center" />
+          <!--
+            下载链接：这是发给别人的东西，比提取码更常用，所以单独一列。
+            桌面上显示省略了域名的短路径，手机整列隐藏（长度会挤没别的列）。
+          -->
+          <el-table-column v-if="!isMobile" label="下载链接" width="200">
+            <template #default="{ row }">
+              <div class="link-cell">
+                <span class="link-text" :title="buildLink(row.code)">
+                  {{ row.code ? '/transfer/' + row.code : '—' }}
+                </span>
+                <el-button link type="primary" size="small" @click="copyLink(row as TransferAdminItem)">
+                  复制
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
 
-          <el-table-column label="状态" width="96" align="center">
+          <el-table-column v-if="!isMobile" prop="downloadCount" label="下载" width="80" align="center" />
+
+          <el-table-column v-if="!isMobile" label="状态" width="96" align="center">
             <template #default="{ row }">
               <el-tag :type="statusMeta(row.status).type" size="small">
                 {{ statusMeta(row.status).text }}
@@ -158,11 +206,24 @@ onMounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column v-if="!isMobile" prop="expireTime" label="过期时间" width="170" />
-          <el-table-column v-if="!isMobile" prop="createTime" label="上传时间" width="170" />
+          <el-table-column v-if="!isMobile" prop="expireTime" label="过期时间" width="160" show-overflow-tooltip />
+          <el-table-column v-if="!isMobile" prop="createTime" label="上传时间" width="160" show-overflow-tooltip />
 
-          <el-table-column label="操作" :width="isMobile ? 90 : 100" fixed="right">
+          <el-table-column label="操作" :width="isMobile ? 128 : 100" fixed="right">
             <template #default="{ row }">
+              <!--
+                手机上"下载链接"整列被隐藏了，把复制按钮收到这里。
+                fixed="right" 保证它永远贴着右侧可见，不会被横向滚动挤走。
+              -->
+              <el-button
+                v-if="isMobile"
+                link
+                type="primary"
+                size="small"
+                @click="copyLink(row as TransferAdminItem)"
+              >
+                复制
+              </el-button>
               <el-button link type="danger" size="small" :icon="Delete" @click="handleDelete(row as TransferAdminItem)">
                 删除
               </el-button>
@@ -210,6 +271,23 @@ onMounted(() => {
   font-family: Consolas, Monaco, monospace;
   font-size: 13px;
   letter-spacing: 1px;
+}
+
+.link-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  color: var(--app-text-secondary);
 }
 
 .table-wrap {
