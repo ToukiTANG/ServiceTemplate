@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { Component } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Expand, Files, Grid, House, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Expand, Grid, SwitchButton } from '@element-plus/icons-vue'
+import * as ElementPlusIcons from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useIsMobile } from '@/utils/responsive'
 
@@ -9,11 +11,13 @@ import { useIsMobile } from '@/utils/responsive'
  * 管理端布局：左侧固定菜单 + 顶部用户栏 + 内容区。
  *
  * 响应式策略：
- * - 桌面（≥768px）：侧边栏常驻，200px 多点宽度足够放下菜单项
- * - 手机（<768px）：侧边栏隐藏，改用「汉堡按钮 + 抽屉」，点菜单项后抽屉自动收起。
- *   不采用「侧边栏收窄成图标条」的做法，因为 375px 宽的屏幕上，
- *   图标条会占掉约 15% 的宽度，而菜单本来就只有一项，得不偿失。
- * - 两端共用同一份 menus 数组，新增菜单只改这一处
+ * - 桌面（≥768px）：侧边栏常驻
+ * - 手机（<768px）：侧边栏隐藏，改用「汉堡按钮 + 抽屉」，点菜单项后抽屉自动收起
+ *
+ * <b>菜单由路由的 meta 生成，不写死在这里。</b>
+ * 给管理端路由加上 `meta: { menu: true, title, icon, order }`，菜单就会自动出现。
+ * 这样本文件在脚手架分支和业务分支上完全一致——加菜单只改各分支自己的 router，
+ * merge 时不会冲突。
  */
 
 const route = useRoute()
@@ -27,28 +31,39 @@ const isMobile = useIsMobile()
 const drawerVisible = ref(false)
 
 /**
- * 菜单配置。
+ * 图标名转组件。
  *
- * icon 存的是组件对象而不是名字字符串，配合 `<component :is="...">` 使用，
- * 好处是类型安全，且不需要维护「名字 → 组件」的映射表。
+ * 路由 meta 里只存字符串（如 'House'），这里查表拿到组件对象。
+ * 好处：路由表不需要 import 组件，图标名写错也只是退化成默认图标，不会编译失败。
  */
-const menus = [
-  { path: '/admin', title: '工具管理', icon: House },
-  { path: '/admin/transfers', title: '文件传输', icon: Files }
-]
-
-/** 当前高亮项跟随路由，将来有子页面时也不用改 */
-const activeMenu = computed(() => route.path)
+function iconOf(name?: unknown): Component {
+  const icons = ElementPlusIcons as unknown as Record<string, Component>
+  return (typeof name === 'string' ? icons[name] : undefined) || ElementPlusIcons.Menu
+}
 
 /**
- * 顶部标题跟随当前菜单。
+ * 菜单项，从路由表推导。
  *
- * 不写死是因为菜单变多以后，进到"文件传输"页面还顶着"工具管理"会让人困惑。
+ * 筛选条件：路径在 /admin 下、且 meta.menu 为 true。
+ * 排序用 meta.order，不依赖 getRoutes() 的返回顺序（那个顺序没有保证）。
  */
-const currentTitle = computed(() => {
-  const matched = menus.find((m) => m.path === route.path)
-  return matched?.title ?? '管理端'
-})
+const menus = computed(() =>
+  router
+    .getRoutes()
+    .filter((r) => r.meta?.menu === true && r.path.startsWith('/admin'))
+    .sort((a, b) => Number(a.meta?.order ?? 99) - Number(b.meta?.order ?? 99))
+    .map((r) => ({
+      path: r.path,
+      title: String(r.meta?.title ?? ''),
+      icon: iconOf(r.meta?.icon)
+    }))
+)
+
+/** 当前高亮项跟随路由 */
+const activeMenu = computed(() => route.path)
+
+/** 顶部标题也来自路由 meta，进哪个页面显示哪个名字 */
+const currentTitle = computed(() => String(route.meta?.title ?? '管理端'))
 
 /**
  * 退出登录。

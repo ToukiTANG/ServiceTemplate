@@ -88,7 +88,7 @@ public class TransferService {
     @Transactional(rollbackFor = Exception.class)
     public UploadInitVO init(InitUploadDTO dto) {
         if (dto.getFileSize() > properties.getMaxFileSize()) {
-            throw new BizException(ErrorCode.TRANSFER_TOO_LARGE,
+            throw new BizException(TransferError.TOO_LARGE,
                     "文件大小超过上限 " + formatSize(properties.getMaxFileSize()));
         }
 
@@ -172,7 +172,7 @@ public class TransferService {
         // 合并前先确认分片齐全，别等合并到一半才发现少一片
         List<Integer> uploaded = storage.uploadedChunks(uploadId, totalChunks);
         if (uploaded.size() != totalChunks) {
-            throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING,
+            throw new BizException(TransferError.CHUNK_MISSING,
                     "分片不完整（" + uploaded.size() + "/" + totalChunks + "），请继续上传");
         }
 
@@ -188,11 +188,11 @@ public class TransferService {
                 storage.deleteQuietly(merged);
                 log.warn("合并后大小不一致: uploadId={}, 期望={}, 实际={}",
                         uploadId, record.getFileSize(), actualSize);
-                throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
+                throw new BizException(TransferError.CHUNK_MISSING);
             }
         } catch (IOException e) {
             storage.deleteQuietly(merged);
-            throw new BizException(ErrorCode.TRANSFER_STORAGE_ERROR);
+            throw new BizException(TransferError.STORAGE_ERROR);
         }
 
         TransferFile update = new TransferFile();
@@ -273,7 +273,7 @@ public class TransferService {
                 log.warn("下载中断: code={}, {}", code, e.getMessage());
             } else {
                 log.error("下载失败: code={}", code, e);
-                throw new BizException(ErrorCode.TRANSFER_STORAGE_ERROR);
+                throw new BizException(TransferError.STORAGE_ERROR);
             }
         }
     }
@@ -309,7 +309,7 @@ public class TransferService {
     public void remove(Long id) {
         TransferFile file = fileMapper.selectById(id);
         if (file == null) {
-            throw new BizException(ErrorCode.TRANSFER_NOT_FOUND);
+            throw new BizException(TransferError.NOT_FOUND);
         }
 
         if (file.getStatus() == TransferFile.STATUS_READY) {
@@ -397,12 +397,12 @@ public class TransferService {
         try {
             id = Long.valueOf(uploadId);
         } catch (NumberFormatException e) {
-            throw new BizException(ErrorCode.TRANSFER_SESSION_INVALID);
+            throw new BizException(TransferError.SESSION_INVALID);
         }
 
         TransferFile file = fileMapper.selectById(id);
         if (file == null || file.getStatus() != TransferFile.STATUS_UPLOADING) {
-            throw new BizException(ErrorCode.TRANSFER_SESSION_INVALID);
+            throw new BizException(TransferError.SESSION_INVALID);
         }
         return file;
     }
@@ -425,7 +425,7 @@ public class TransferService {
                 || file.getStatus() != TransferFile.STATUS_READY
                 || file.getExpireTime() == null
                 || file.getExpireTime().isBefore(LocalDateTime.now())) {
-            throw new BizException(ErrorCode.TRANSFER_NOT_FOUND);
+            throw new BizException(TransferError.NOT_FOUND);
         }
         return file;
     }

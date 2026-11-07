@@ -214,7 +214,7 @@ public class ToolService {
     private Tool getExisting(Long id) {
         Tool tool = toolMapper.selectById(id);
         if (tool == null) {
-            throw new BizException(ErrorCode.TOOL_NOT_FOUND);
+            throw new BizException(ToolError.NOT_FOUND);
         }
         return tool;
     }
@@ -235,7 +235,7 @@ public class ToolService {
                 .ne(excludeId != null, Tool::getId, excludeId));
 
         if (count != null && count > 0) {
-            throw new BizException(ErrorCode.TOOL_NAME_DUPLICATE);
+            throw new BizException(ToolError.NAME_DUPLICATE);
         }
     }
 

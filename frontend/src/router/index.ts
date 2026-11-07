@@ -56,13 +56,16 @@ const router = createRouter({
         {
           path: '',
           name: 'admin-tools',
-          component: () => import('@/views/admin/ToolListView.vue')
+          component: () => import('@/views/admin/ToolListView.vue'),
+          // meta.menu 为 true 的路由会自动出现在左侧菜单里（见 AdminLayout）
+          meta: { menu: true, title: '工具管理', icon: 'House', order: 1 }
         },
         {
           // 文件传输记录管理
           path: 'transfers',
           name: 'admin-transfers',
-          component: () => import('@/views/admin/TransferListView.vue')
+          component: () => import('@/views/admin/TransferListView.vue'),
+          meta: { menu: true, title: '文件传输', icon: 'Files', order: 2 }
         }
       ]
     },

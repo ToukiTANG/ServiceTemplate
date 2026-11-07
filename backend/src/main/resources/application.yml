@@ -97,6 +97,24 @@ app:
     # 令牌有效期（小时）。168 = 7 天
     expire-hours: 168
 
+  security:
+    # 免登录接口白名单（Ant 风格）。拦截器拦 /api/** 全部，只放行这里列出的路径。
+    #
+    # 放在配置里而不是写死进 WebConfig：这样 WebConfig.java 在脚手架分支和业务分支
+    # 上完全一致，业务分支新增公开接口时只改这里，merge 时不会和脚手架打架。
+    #
+    # 业务分支追加的项：
+    #   /api/portal/**          展示端公开数据
+    #   /api/transfer/info/**   文件提取页（收到提取码的人通常没有账号）
+    #   /api/transfer/download/**  文件下载
+    # 注意上传接口 /api/transfer/upload/** 不在白名单里，必须登录——
+    # 否则任何人都能往服务器磁盘塞文件。
+    public-paths:
+      - /api/auth/login
+      - /api/portal/**
+      - /api/transfer/info/**
+      - /api/transfer/download/**
+
   transfer:
     # 文件存储根目录。程序会自动创建，目录结构见 TransferProperties 的注释。
     # 部署到服务器时改成有足够磁盘的分区，比如 /data/transfer。

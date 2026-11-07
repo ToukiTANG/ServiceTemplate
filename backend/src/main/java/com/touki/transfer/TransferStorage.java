@@ -1,7 +1,6 @@
 package com.touki.transfer;
 
 import com.touki.common.BizException;
-import com.touki.common.ErrorCode;
 import com.touki.config.TransferProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,7 +76,7 @@ public class TransferStorage {
 
         // 双保险：即使 uploadId 被构造成 ../../etc 这种，也走不出沙箱
         if (!target.startsWith(baseDir())) {
-            throw new BizException(ErrorCode.TRANSFER_INVALID_PATH);
+            throw new BizException(TransferError.INVALID_PATH);
         }
 
         try {
@@ -87,7 +86,7 @@ public class TransferStorage {
             file.transferTo(target);
         } catch (IOException e) {
             log.error("写入分片失败: uploadId={}, index={}", uploadId, index, e);
-            throw new BizException(ErrorCode.TRANSFER_STORAGE_ERROR);
+            throw new BizException(TransferError.STORAGE_ERROR);
         }
     }
 
@@ -166,7 +165,7 @@ public class TransferStorage {
                     Path part = tmp.resolve(i + PART_SUFFIX);
                     if (!Files.exists(part)) {
                         log.warn("分片缺失: uploadId={}, index={}", uploadId, i);
-                        throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
+                        throw new BizException(TransferError.CHUNK_MISSING);
                     }
 
                     // 非末片必须刚好是 chunkSize，否则说明这个分片被截断了
@@ -175,7 +174,7 @@ public class TransferStorage {
                         if (partSize != chunkSize) {
                             log.warn("分片大小异常: uploadId={}, index={}, 期望={}, 实际={}",
                                     uploadId, i, chunkSize, partSize);
-                            throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
+                            throw new BizException(TransferError.CHUNK_MISSING);
                         }
                     }
 
@@ -191,7 +190,7 @@ public class TransferStorage {
         } catch (IOException e) {
             deleteQuietly(target);
             log.error("合并分片失败: uploadId={}", uploadId, e);
-            throw new BizException(ErrorCode.TRANSFER_STORAGE_ERROR);
+            throw new BizException(TransferError.STORAGE_ERROR);
         }
 
         return relative;
@@ -214,7 +213,7 @@ public class TransferStorage {
             return HexFormat.of().formatHex(digestIn.getMessageDigest().digest());
         } catch (IOException | NoSuchAlgorithmException e) {
             log.error("计算文件哈希失败: {}", path, e);
-            throw new BizException(ErrorCode.TRANSFER_STORAGE_ERROR);
+            throw new BizException(TransferError.STORAGE_ERROR);
         }
     }
 
@@ -232,10 +231,10 @@ public class TransferStorage {
         Path base = baseDir();
         Path target = base.resolve(relativePath).normalize();
         if (!target.startsWith(base)) {
-            throw new BizException(ErrorCode.TRANSFER_INVALID_PATH);
+            throw new BizException(TransferError.INVALID_PATH);
         }
         if (!Files.isRegularFile(target)) {
-            throw new BizException(ErrorCode.TRANSFER_FILE_MISSING);
+            throw new BizException(TransferError.FILE_MISSING);
         }
         return target;
     }
