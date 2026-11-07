@@ -253,11 +253,18 @@ public class TransferService {
 
         try {
             long size = Files.size(path);
-            response.setContentType(StringUtils.hasText(file.getContentType())
-                    ? file.getContentType()
-                    : MediaType.APPLICATION_OCTET_STREAM_VALUE);
+
+            // 下载一律用 application/octet-stream，**不信任**上传时客户端声明的 MIME。
+            // 原因：如果对方把文件声明成 text/html 或 image/svg+xml，浏览器有可能会
+            // 就地渲染而不是下载——HTML 里的脚本就在本站域名下执行了（存储型 XSS）。
+            // 虽然 Content-Disposition: attachment 通常能拦住，但那只是"指望浏览器守规矩"，
+            // 换成 octet-stream 是从源头掐掉这种可能。
+            response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
             response.setContentLengthLong(size);
             response.setHeader("Content-Disposition", buildContentDisposition(file.getFileName()));
+            // 另外禁掉内容嗅探：部分浏览器会忽略 Content-Type、按内容猜成 HTML。
+            // 加上这个头之后，猜也不猜，直接当二进制下载。
+            response.setHeader("X-Content-Type-Options", "nosniff");
 
             try (InputStream in = Files.newInputStream(path)) {
                 in.transferTo(response.getOutputStream());
