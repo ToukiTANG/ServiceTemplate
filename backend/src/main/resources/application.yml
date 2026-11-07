@@ -100,6 +100,30 @@ app:
     public-paths:
       - /api/auth/login
 
+  storage:
+    # 对象存储。文件由前端直传，服务器只负责发签名和记账。
+    #
+    # 为什么不用本地磁盘：公网带宽窄（几 Mbps），几百 MB 的文件经服务器中转，
+    # 上传下载各要二十多分钟，期间带宽被吃满、其他请求全部排队。
+    type: upyun
+    upyun:
+      # 又拍云服务名
+      bucket: file-touki
+      # 操作员名。密码不放这里，走环境变量或 application-local.yml
+      operator: ""
+      # 操作员密码：本机填在 application-local.yml，线上用环境变量 UPYUN_PASSWORD
+      password: ${UPYUN_PASSWORD:}
+      # 访问域名。现在是测试域名，换正式域名或接 CDN 时只改这一行
+      domain: file-touki.test.upcdn.net
+      # 智能选路
+      api-host: v0.api.upyun.com
+      # 存储路径前缀，留空表示放在根目录
+      path-prefix: ""
+      # 单文件上限 500MB
+      max-file-size: 524288000
+      # 签名有效期（秒）。又拍云签名本身上限 30 分钟，这里取 10 分钟
+      sign-expire-seconds: 600
+
 springdoc:
   swagger-ui:
     # 接口文档地址

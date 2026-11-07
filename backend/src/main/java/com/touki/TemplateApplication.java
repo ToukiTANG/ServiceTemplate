@@ -2,6 +2,7 @@ package com.touki;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 应用启动类。
@@ -17,6 +18,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 每个 Mapper 接口自行标注 {@code @Mapper}，一目了然，新增模块也不用改启动类。
  */
 @SpringBootApplication
+@EnableScheduling
 public class TemplateApplication {
 
     public static void main(String[] args) {
