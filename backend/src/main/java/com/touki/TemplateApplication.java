@@ -2,6 +2,7 @@ package com.touki;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 应用启动类。
@@ -15,8 +16,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * <p>关于 Mapper 扫描：本项目不为 Mapper 单独建包，而是与业务类平铺在同一模块包下，
  * 因此不使用 {@code @MapperScan} 统一扫描（那会连普通接口一起扫进来）。
  * 每个 Mapper 接口自行标注 {@code @Mapper}，一目了然，新增模块也不用改启动类。
+ *
+ * <p>{@code @EnableScheduling}：文件传输的过期清理任务需要定时调度，
+ * 没有这个注解 {@code @Scheduled} 不会生效（而且不会报错，很容易漏）。
  */
 @SpringBootApplication
+@EnableScheduling
 public class TemplateApplication {
 
     public static void main(String[] args) {

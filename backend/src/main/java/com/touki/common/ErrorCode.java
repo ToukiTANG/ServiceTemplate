@@ -46,7 +46,23 @@ public enum ErrorCode {
     /** 按 ID 查不到工具，或被并发删除 */
     TOOL_NOT_FOUND(2001, "工具不存在或已被删除"),
     /** 同一分类下工具名称重复。跨分类允许同名 */
-    TOOL_NAME_DUPLICATE(2002, "同一分类下已存在同名工具");
+    TOOL_NAME_DUPLICATE(2002, "同一分类下已存在同名工具"),
+
+    // ---------- 文件传输 ----------
+    /** 提取码无效、文件不存在、已过期或已删除，统一用这一个码 */
+    TRANSFER_NOT_FOUND(3001, "文件不存在或已过期"),
+    /** 文件超过大小上限 */
+    TRANSFER_TOO_LARGE(3002, "文件超过大小限制"),
+    /** 分片缺失或合并后校验不一致 */
+    TRANSFER_CHUNK_MISSING(3003, "分片不完整，请重新上传"),
+    /** 上传会话不存在或已失效（比如服务重启后记录被清理） */
+    TRANSFER_SESSION_INVALID(3004, "上传会话已失效，请重新开始"),
+    /** 磁盘写入失败 */
+    TRANSFER_STORAGE_ERROR(3005, "文件保存失败，请稍后重试"),
+    /** 路径非法（防路径穿越） */
+    TRANSFER_INVALID_PATH(3006, "文件路径非法"),
+    /** 磁盘上的文件丢失（记录还在但文件被手工删了） */
+    TRANSFER_FILE_MISSING(3007, "文件已损坏或丢失");
 
     /** 业务状态码 */
     private final int code;

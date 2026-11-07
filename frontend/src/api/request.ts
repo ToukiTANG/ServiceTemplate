@@ -126,5 +126,27 @@ export const http = {
   },
   delete<T>(url: string): Promise<T> {
     return instance.delete(url) as unknown as Promise<T>
+  },
+  /**
+   * 提交 FormData（文件上传用），并回调进度。
+   *
+   * 与普通 post 的区别：
+   * 1. 不能手动设置 Content-Type——浏览器需要自动带上 multipart 的 boundary，
+   *    手写 `multipart/form-data` 会导致后端解析失败
+   * 2. 需要 onUploadProgress 才能画进度条
+   *
+   * @param url        接口地址
+   * @param form       表单数据
+   * @param onProgress 进度回调，参数是 0-100 的百分比
+   */
+  postForm<T>(url: string, form: FormData, onProgress?: (percent: number) => void): Promise<T> {
+    return instance.post(url, form, {
+      onUploadProgress: (event) => {
+        // total 在部分浏览器里可能是 undefined，没拿到就跳过，别让进度条乱跳
+        if (onProgress && event.total) {
+          onProgress(Math.round((event.loaded / event.total) * 100))
+        }
+      }
+    }) as unknown as Promise<T>
   }
 }

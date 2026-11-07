@@ -64,12 +64,17 @@ public class WebConfig implements WebMvcConfigurer {
      * 前者新增任何接口默认都是受保护的（安全默认）；后者一旦忘了把新接口
      * 放到约定的前缀下，接口就会裸奔，且这种问题很难在测试中发现。
      *
-     * <p>白名单只有两项：
+     * <p>白名单分三组：
      * <ul>
-     *   <li>{@code /api/auth/login}：登录本身当然不能要求登录</li>
-     *   <li>{@code /api/portal/**}：展示页公开访问</li>
+     *   <li>{@code /api/auth/login}：登录本身不能要求登录</li>
+     *   <li>{@code /api/portal/**}：展示端公开数据</li>
+     *   <li>{@code /api/transfer/info/**} 与 {@code /api/transfer/download/**}：
+     *       文件传输的查询与下载。收到提取码的人通常没有账号，凭码即可访问；
+     *       而上传接口 {@code /api/transfer/upload/**} 不在白名单里，必须登录——
+     *       否则任何人都能往服务器磁盘塞文件</li>
      * </ul>
-     * Swagger 相关路径不在 {@code /api/**} 下，天然不受影响。
+     *
+     * <p>Swagger 相关路径不在 {@code /api/**} 下，天然不受影响。
      *
      * @param registry 拦截器注册表
      */
@@ -78,7 +83,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/auth/login")
-                .excludePathPatterns("/api/portal/**");
+                .excludePathPatterns("/api/portal/**")
+                .excludePathPatterns("/api/transfer/info/**")
+                .excludePathPatterns("/api/transfer/download/**");
     }
 
     /**

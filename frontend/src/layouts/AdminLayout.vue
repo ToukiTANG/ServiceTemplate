@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Expand, Grid, House, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Expand, Files, Grid, House, SwitchButton } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useIsMobile } from '@/utils/responsive'
 
@@ -32,10 +32,23 @@ const drawerVisible = ref(false)
  * icon 存的是组件对象而不是名字字符串，配合 `<component :is="...">` 使用，
  * 好处是类型安全，且不需要维护「名字 → 组件」的映射表。
  */
-const menus = [{ path: '/admin', title: '工具管理', icon: House }]
+const menus = [
+  { path: '/admin', title: '工具管理', icon: House },
+  { path: '/admin/transfers', title: '文件传输', icon: Files }
+]
 
 /** 当前高亮项跟随路由，将来有子页面时也不用改 */
 const activeMenu = computed(() => route.path)
+
+/**
+ * 顶部标题跟随当前菜单。
+ *
+ * 不写死是因为菜单变多以后，进到"文件传输"页面还顶着"工具管理"会让人困惑。
+ */
+const currentTitle = computed(() => {
+  const matched = menus.find((m) => m.path === route.path)
+  return matched?.title ?? '管理端'
+})
 
 /**
  * 退出登录。
@@ -129,7 +142,7 @@ function handleMenuSelect(): void {
             text
             @click="drawerVisible = true"
           />
-          <span class="header-title">工具管理</span>
+          <span class="header-title">{{ currentTitle }}</span>
         </div>
 
         <el-dropdown trigger="click">

@@ -47,6 +47,14 @@ spring:
       # 获取连接超时 10 秒，避免数据库没起来时启动卡很久
       connection-timeout: 10000
 
+  servlet:
+    multipart:
+      # 文件传输走分片上传，单次请求只传一个分片。
+      # 这里给到 10MB（分片本身 5MB），是为了留余量给表单字段和 multipart 边界。
+      # 注意不要把这里改成 500MB——那等于放弃分片，大文件会直接把内存打满。
+      max-file-size: 10MB
+      max-request-size: 12MB
+
   flyway:
     enabled: true
     # 迁移脚本位置，与 resources/db/migration 对应
@@ -88,6 +96,19 @@ app:
     secret: 请改成一个至少32字节的随机字符串_ChangeMe_To_A_Random_Secret
     # 令牌有效期（小时）。168 = 7 天
     expire-hours: 168
+
+  transfer:
+    # 文件存储根目录。程序会自动创建，目录结构见 TransferProperties 的注释。
+    # 部署到服务器时改成有足够磁盘的分区，比如 /data/transfer。
+    storage-path: D:/data/transfer
+    # 单文件上限 500MB
+    max-file-size: 524288000
+    # 分片大小 5MB（必须小于 spring.servlet.multipart.max-file-size）
+    chunk-size: 5242880
+    # 默认有效期 24 小时
+    default-expire-hours: 24
+    # 最长可选 7 天
+    max-expire-hours: 168
 
 springdoc:
   swagger-ui:

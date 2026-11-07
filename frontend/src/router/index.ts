@@ -28,6 +28,18 @@ const router = createRouter({
           path: 'tools/json',
           name: 'json-tool',
           component: () => import('@/views/portal/JsonToolView.vue')
+        },
+        {
+          // 文件上传页
+          path: 'transfer',
+          name: 'transfer',
+          component: () => import('@/views/portal/TransferView.vue')
+        },
+        {
+          // 提取页：链接形态 /transfer/abc123，直接把提取码发出去就能打开
+          path: 'transfer/:code',
+          name: 'transfer-download',
+          component: () => import('@/views/portal/TransferDownloadView.vue')
         }
       ]
     },
@@ -45,6 +57,12 @@ const router = createRouter({
           path: '',
           name: 'admin-tools',
           component: () => import('@/views/admin/ToolListView.vue')
+        },
+        {
+          // 文件传输记录管理
+          path: 'transfers',
+          name: 'admin-transfers',
+          component: () => import('@/views/admin/TransferListView.vue')
         }
       ]
     },
