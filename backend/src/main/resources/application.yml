@@ -115,6 +115,9 @@ app:
       password: ${UPYUN_PASSWORD:}
       # 访问域名。现在是测试域名，换正式域名或接 CDN 时只改这一行
       domain: file-touki.test.upcdn.net
+      # 访问协议。测试域名 *.test.upcdn.net 只支持 http，走 https 会 TLS 握手失败；
+      # 换成正式域名并配好证书后改成 https
+      scheme: http
       # 智能选路
       api-host: v0.api.upyun.com
       # 存储路径前缀，留空表示放在根目录

@@ -54,6 +54,15 @@ public class StorageProperties {
          */
         private String domain = "";
 
+        /**
+         * 访问协议：http 或 https。
+         *
+         * <p>又拍云的测试域名 {@code *.test.upcdn.net} <b>只支持 HTTP</b>，
+         * 走 HTTPS 会 TLS 握手失败（Windows 上报 SEC_E_ILLEGAL_MESSAGE）。
+         * 换成正式域名、接入 CDN 并配好证书后，把这里改成 https。
+         */
+        private String scheme = "https";
+
         /** REST API 地址，智能选路用 v0 */
         private String apiHost = "v0.api.upyun.com";
 

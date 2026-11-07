@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -19,6 +21,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
 
@@ -69,9 +72,25 @@ public class StorageClient {
     /**
      * 为一次对象存储请求生成签名。
      *
-     * @param method         HTTP 方法：PUT（上传）、DELETE（删除）等
-     * @param storageKey     对象在存储中的相对路径，如 {@code 2026/11/07/abc.pdf}
-     * @param contentLength  请求体长度；GET/DELETE 传 0，分片上传传该分片的字节数
+     * <p>用的是又拍云 <b>V4</b> 认证（官方 Java SDK 的实现）：
+     * <pre>
+     * data      = METHOD &amp; PATH &amp; DATE [&amp; Content-MD5]
+     * signature = Base64(HMAC-SHA1(key = md5(密码), data))
+     * Authorization: UPYUN {operator}:{signature}
+     * </pre>
+     *
+     * <p>两个容易踩的坑：
+     * <ul>
+     *   <li>V4 <b>不包含 CONTENT_LENGTH</b>。网上大量教程写的是旧版 MD5 算法
+     *       （{@code md5(METHOD&PATH&DATE&LENGTH&md5(密码))}），照着写会一直 401
+     *       {@code signature error}，而错误信息不会告诉你哪儿错了。</li>
+     *   <li>密码要先 md5 再当 HMAC 的 key，不是直接拿原文当 key。</li>
+     * </ul>
+     *
+     * @param method        HTTP 方法：PUT（上传）、DELETE（删除）等
+     * @param storageKey    对象在存储中的相对路径
+     * @param contentLength 请求体长度。V4 签名不参与计算，保留参数是为了接口语义完整，
+     *                      将来若要加 Content-MD5 校验会用得上
      * @return 可直接放进请求头的签名结果
      * @throws BizException 未配置操作员信息时抛出（4006）
      */
@@ -80,11 +99,10 @@ public class StorageClient {
 
         String date = HTTP_DATE.format(ZonedDateTime.now(ZoneOffset.UTC));
         String path = "/" + cfg.getBucket() + "/" + normalizeKey(storageKey);
-        String passwordMd5 = md5(cfg.getPassword());
 
-        // 严格按官方顺序拼接，多一个空格都会导致 401
-        String raw = method + "&" + path + "&" + date + "&" + contentLength + "&" + passwordMd5;
-        String signature = md5(raw);
+        // V4：不含 contentLength；不带 Content-MD5 请求头时也不追加 md5 段
+        String raw = method + "&" + path + "&" + date;
+        String signature = hmacSha1Base64(md5(cfg.getPassword()), raw);
 
         return new SignedRequest("UPYUN " + cfg.getOperator() + ":" + signature, date, path);
     }
@@ -146,7 +164,7 @@ public class StorageClient {
     /**
      * 拼接文件的公开访问地址。
      *
-     * <p>域名来自配置，所以换成正式域名或接入 CDN 时只改配置——
+     * <p>协议和域名都来自配置，所以换正式域名、接入 CDN、切换 http/https 时只改配置——
      * 数据库里存的是相对路径，不需要刷数据。
      *
      * @param storageKey 存储相对路径
@@ -157,7 +175,8 @@ public class StorageClient {
         if (!StringUtils.hasText(cfg.getDomain())) {
             return "";
         }
-        return "https://" + cfg.getDomain() + "/" + normalizeKey(storageKey);
+        String scheme = StringUtils.hasText(cfg.getScheme()) ? cfg.getScheme() : "https";
+        return scheme + "://" + cfg.getDomain() + "/" + normalizeKey(storageKey);
     }
 
     /**
@@ -262,6 +281,26 @@ public class StorageClient {
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
             // MD5 是 JDK 必备算法，走不到这里；包一层避免到处 throws
+            throw new BizException(StorageError.SIGN_FAILED);
+        }
+    }
+
+    /**
+     * HMAC-SHA1 后做 Base64。
+     *
+     * <p>又拍云 V4 的签名就是这一步：key 是 {@code md5(密码)} 的十六进制字符串，
+     * data 是拼接好的请求描述。
+     *
+     * @param key  HMAC 密钥（md5 后的密码）
+     * @param data 待签名的字符串
+     * @return Base64 编码的签名
+     */
+    private String hmacSha1Base64(String key, String data) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA1");
+            mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
+            return Base64.getEncoder().encodeToString(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
             throw new BizException(StorageError.SIGN_FAILED);
         }
     }
