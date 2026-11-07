@@ -37,6 +37,8 @@ public enum ErrorCode implements ErrorItem {
     FORBIDDEN(403, "无权限访问"),
     /** 资源不存在 */
     NOT_FOUND(404, "请求的资源不存在"),
+    /** 请求方法不支持，例如用 GET 访问只接受 POST 的接口 */
+    METHOD_NOT_ALLOWED(405, "请求方法不支持"),
     /** 未预期的异常，具体堆栈只写日志，不返回给前端 */
     SYSTEM_ERROR(500, "系统异常，请稍后重试"),
 
