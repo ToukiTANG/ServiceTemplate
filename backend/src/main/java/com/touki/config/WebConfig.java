@@ -45,29 +45,34 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
 
+    /** 免登录白名单，来自 {@code app.security.public-paths} */
+    private final SecurityProperties securityProperties;
+
     /**
      * 构造器注入。
      *
-     * <p>只注入拦截器一个依赖——{@link PasswordEncoder} 和 Jackson 定制器
+     * <p>只注入拦截器和安全配置——{@link PasswordEncoder} 和 Jackson 定制器
      * 都由本类自己产出，不能再注进来，否则会形成循环依赖。
      *
-     * @param jwtInterceptor 登录校验拦截器
+     * @param jwtInterceptor     登录校验拦截器
+     * @param securityProperties 白名单配置
      */
-    public WebConfig(JwtInterceptor jwtInterceptor) {
+    public WebConfig(JwtInterceptor jwtInterceptor, SecurityProperties securityProperties) {
         this.jwtInterceptor = jwtInterceptor;
+        this.securityProperties = securityProperties;
     }
 
     /**
      * 注册登录拦截器。
      *
-     * <p>采用"全拦 + 白名单"而不是"只拦管理端前缀"：
+     * <p>采用「全拦 + 白名单」而不是「只拦管理端前缀」：
      * 前者新增任何接口默认都是受保护的（安全默认）；后者一旦忘了把新接口
      * 放到约定的前缀下，接口就会裸奔，且这种问题很难在测试中发现。
      *
-     * <p>白名单当前只有登录接口一项。
-     * 将来要做公开接口（比如展示页需要读数据），按下面的形式追加一行即可：
-     * {@code .excludePathPatterns("/api/public/**")}，
-     * 并把公开接口统一放在那个前缀下，让"公开"这件事在路径上一眼可见。
+     * <p><b>白名单来自配置 {@code app.security.public-paths}，不写死在这里。</b>
+     * 这样本文件在脚手架分支和业务分支上完全一致——业务分支新增公开接口时
+     * 只改自己的 yml，脚手架 merge 过来不会冲突。
+     * 默认只有 {@code /api/auth/login}（登录接口当然不能要求登录）。
      *
      * <p>Swagger 相关路径不在 {@code /api/**} 下，天然不受影响。
      *
@@ -77,8 +82,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
-                // 登录接口本身当然不能要求登录
-                .excludePathPatterns("/api/auth/login");
+                .excludePathPatterns(securityProperties.getPublicPaths());
     }
 
     /**

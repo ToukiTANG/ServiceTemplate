@@ -49,12 +49,13 @@ public class R<T> {
     }
 
     /**
-     * 失败，使用预定义错误码及其标准文案。
+     * 失败，使用预定义错误项及其标准文案。
      *
-     * @param errorCode 错误码枚举，见 {@link ErrorCode}
+     * @param errorItem 错误项。可以是通用的 {@link ErrorCode}，
+     *                  也可以是业务模块自己的枚举（只要实现了 {@link ErrorItem}）
      */
-    public static <T> R<T> fail(ErrorCode errorCode) {
-        return new R<>(errorCode.getCode(), errorCode.getMessage(), null);
+    public static <T> R<T> fail(ErrorItem errorItem) {
+        return new R<>(errorItem.getCode(), errorItem.getMessage(), null);
     }
 
     /**

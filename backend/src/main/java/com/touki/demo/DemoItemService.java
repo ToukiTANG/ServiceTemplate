@@ -178,7 +178,7 @@ public class DemoItemService {
     private DemoItem getExisting(Long id) {
         DemoItem item = itemMapper.selectById(id);
         if (item == null) {
-            throw new BizException(ErrorCode.DEMO_ITEM_NOT_FOUND);
+            throw new BizException(DemoError.NOT_FOUND);
         }
         return item;
     }
@@ -197,7 +197,7 @@ public class DemoItemService {
                 .ne(excludeId != null, DemoItem::getId, excludeId));
 
         if (count != null && count > 0) {
-            throw new BizException(ErrorCode.DEMO_ITEM_NAME_DUPLICATE);
+            throw new BizException(DemoError.NAME_DUPLICATE);
         }
     }
 

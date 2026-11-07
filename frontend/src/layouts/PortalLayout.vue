@@ -8,11 +8,17 @@ import { Grid } from '@element-plus/icons-vue'
  * 没有任何登录逻辑，访客直接可看。
  * 右上角留一个「管理端」入口，登录后才有意义。
  *
+ * 站点名称从环境变量读取（见 .env 的 VITE_APP_NAME），
+ * 这样改品牌名只改配置，不用动组件——本文件在脚手架分支和业务分支上完全一致。
+ *
  * 手机上的调整（在 style 里用媒体查询处理，不需要 JS 判断）：
  * - 顶栏高度和左右内边距收窄
  * - 内容区左右留白从 24px 减到 16px
  * - 标题字号下调一档
  */
+
+/** 站点名，缺省值保证没配 .env 时也不会显示空白 */
+const appName = import.meta.env.VITE_APP_NAME || 'ServiceTemplate'
 </script>
 
 <template>
@@ -21,7 +27,7 @@ import { Grid } from '@element-plus/icons-vue'
       <div class="header-inner">
         <RouterLink to="/" class="brand">
           <el-icon :size="20"><Grid /></el-icon>
-          <span>ServiceTemplate</span>
+          <span>{{ appName }}</span>
         </RouterLink>
 
         <nav class="portal-nav">
@@ -39,7 +45,7 @@ import { Grid } from '@element-plus/icons-vue'
     </main>
 
     <footer class="portal-footer">
-      <span>ServiceTemplate · Java + Vue 服务脚手架</span>
+      <span>{{ appName }} · Java + Vue</span>
     </footer>
   </div>
 </template>

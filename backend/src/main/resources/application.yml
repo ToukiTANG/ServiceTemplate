@@ -89,6 +89,17 @@ app:
     # 令牌有效期（小时）。168 = 7 天
     expire-hours: 168
 
+  security:
+    # 免登录接口白名单（Ant 风格）。拦截器拦 /api/** 全部，只放行这里列出的路径。
+    #
+    # 放在配置里而不是写死进 WebConfig：这样 WebConfig.java 在脚手架分支和业务分支
+    # 上完全一致，业务分支新增公开接口时只改这里，merge 时不会和脚手架打架。
+    #
+    # 脚手架本身没有公开接口，所以只有登录一项。
+    # 业务分支会往下追加，例如 /api/portal/**、/api/transfer/info/**。
+    public-paths:
+      - /api/auth/login
+
 springdoc:
   swagger-ui:
     # 接口文档地址

@@ -43,7 +43,9 @@ const router = createRouter({
           // 管理端首页就是示例列表；有自己的业务时，改成 Dashboard 或直接指向业务首页
           path: '',
           name: 'admin-items',
-          component: () => import('@/views/admin/ItemListView.vue')
+          component: () => import('@/views/admin/ItemListView.vue'),
+          // meta.menu 为 true 的路由会自动出现在左侧菜单里（见 AdminLayout）
+          meta: { menu: true, title: '示例数据', icon: 'House', order: 1 }
         }
       ]
     },
