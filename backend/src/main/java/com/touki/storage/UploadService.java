@@ -193,9 +193,17 @@ public class UploadService {
      *
      * <p>「孤儿」= 登记了但一直没传完的记录（前端关了页面、网络断了、用户跑了）。
      * 它们占着对象存储上可能存在的半个文件，也让列表变脏。
-     * 每 30 分钟扫一次，每次最多处理 100 条，避免一次性打满。
+     *
+     * <p><b>每天凌晨 3 点跑一次就够了</b>，不必更频繁：
+     * <ul>
+     *   <li>清理条件是「上传中且已过 24 小时」，本来就是低频事件</li>
+     *   <li>每半小时扫一次，绝大多数时候是空查询——走索引成本很低，但没有意义</li>
+     *   <li>最坏情况只是孤儿多留一天，不影响任何功能</li>
+     * </ul>
+     *
+     * <p>每次最多处理 100 条：积压多的话第二天继续，避免一次性打满对象存储的删除接口。
      */
-    @Scheduled(fixedDelay = 30 * 60 * 1000, initialDelay = 5 * 60 * 1000)
+    @Scheduled(cron = "0 0 3 * * ?", zone = "Asia/Shanghai")
     public void cleanupOrphans() {
         List<UploadFile> orphans = fileMapper.selectList(Wrappers.<UploadFile>lambdaQuery()
                 .eq(UploadFile::getStatus, UploadFile.STATUS_UPLOADING)
