@@ -207,3 +207,43 @@ cd frontend && npx vue-tsc --noEmit
 ```
 
 两条都过，基本就不会有低级错误。
+
+---
+
+## 七、分支合并
+
+```
+main                 脚手架：认证、统一响应、分页、示例模块
+  └ feature/toolbox  业务：工具站（工具卡片 + 文件传输）
+```
+
+### 同步脚手架的改动
+
+```bash
+git checkout feature/toolbox
+git merge main
+```
+
+**只会冲突两个文件**：
+
+| 文件 | 原因 | 处理 |
+|---|---|---|
+| `README.md` | main 讲脚手架，业务分支讲工具站 | 保留业务分支版本 |
+| `docs/DESIGN.md` | 同上，两份设计文档定位不同 | 保留业务分支版本 |
+
+```bash
+git checkout --ours README.md docs/DESIGN.md
+git add .
+git commit
+```
+
+这两份文档在两边的写法都成立，git 无法自动裁决，属于**预期内**的冲突。其余文件（`R.java`、`JwtInterceptor.java`、`request.ts`、`application.yml` 等）因为业务分支从未改过，会直接快进合入，不会冲突。
+
+### 两条纪律
+
+1. **不要在 `main` 上写业务代码**。一旦 main 改了 `ErrorCode`、`types/index.ts`、`router/index.ts` 这类两边都有但内容不同的文件，merge 就会产生真正的代码冲突，那时候 `checkout --ours` 就不适用了——会把脚手架的改动整个丢掉。
+2. **不要把 `feature/toolbox` merge 回 `main`**，那等于把业务搬进脚手架，分支隔离就失去意义了。
+
+### 什么时候需要合并
+
+只要 `main` 上有了新的通用能力（比如给拦截器加令牌刷新、给 `request.ts` 加失败重试），就 merge 一次。如果 main 只改了文档或注释，合不合都行。
