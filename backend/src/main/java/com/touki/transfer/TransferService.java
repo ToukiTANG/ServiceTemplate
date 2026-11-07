@@ -176,29 +176,19 @@ public class TransferService {
                     "分片不完整（" + uploaded.size() + "/" + totalChunks + "），请继续上传");
         }
 
-        String relative = storage.merge(uploadId, totalChunks, record.getId());
+        String relative = storage.merge(uploadId, totalChunks, chunkSize, record.getId());
         Path merged = storage.baseDir().resolve(relative);
 
         try {
-            // 校验一：大小必须和声明的一致
+            // 校验合并后的字节数。这是本流程唯一的内容完整性检查，原因见类注释：
+            // 前端无法为几百 MB 的文件计算真实 SHA-256（Web Crypto 要求整个文件进内存），
+            // 所以 fileHash 存的是"弱指纹"，只能用于断点续传识别，不能当摘要用。
             long actualSize = Files.size(merged);
             if (actualSize != record.getFileSize()) {
                 storage.deleteQuietly(merged);
                 log.warn("合并后大小不一致: uploadId={}, 期望={}, 实际={}",
                         uploadId, record.getFileSize(), actualSize);
                 throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
-            }
-
-            // 校验二：哈希一致。不一致说明某个分片在传输中损坏，
-            // 必须删掉，否则用户下载下来是个打不开的坏文件，还查不出原因
-            if (StringUtils.hasText(record.getFileHash())) {
-                String actualHash = storage.sha256(merged);
-                if (!actualHash.equalsIgnoreCase(record.getFileHash())) {
-                    storage.deleteQuietly(merged);
-                    log.warn("合并后哈希不一致: uploadId={}, 期望={}, 实际={}",
-                            uploadId, record.getFileHash(), actualHash);
-                    throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
-                }
             }
         } catch (IOException e) {
             storage.deleteQuietly(merged);

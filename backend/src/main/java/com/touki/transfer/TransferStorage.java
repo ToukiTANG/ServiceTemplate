@@ -137,13 +137,18 @@ public class TransferStorage {
      * <p>关键点：<b>流式追加</b>，逐个分片拷贝，任何时候内存里只有一个缓冲区。
      * 如果把所有分片读成 byte[] 再拼接，500MB 的文件会直接 OOM。
      *
+     * <p>合并前会校验每个分片的大小：除最后一片外，每片必须正好等于 {@code chunkSize}。
+     * 这是发现"分片传到一半断了"的最有效手段——只校验合并后的总大小是不够的，
+     * 中间某片少了 1KB、另一片多了 1KB，总数一样对得上。
+     *
      * @param uploadId    上传会话 ID
      * @param totalChunks 分片总数
+     * @param chunkSize   分片大小，用于逐片校验
      * @param fileId      文件记录 ID，用作最终文件名
      * @return 相对路径，形如 {@code 20261107/1234567890.bin}
-     * @throws BizException 分片缺失或写盘失败
+     * @throws BizException 分片缺失、分片大小不对或写盘失败
      */
-    public String merge(String uploadId, int totalChunks, Long fileId) {
+    public String merge(String uploadId, int totalChunks, long chunkSize, Long fileId) {
         Path tmp = tmpDir(uploadId);
         String day = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         String relative = day + "/" + fileId + BLOB_SUFFIX;
@@ -163,6 +168,17 @@ public class TransferStorage {
                         log.warn("分片缺失: uploadId={}, index={}", uploadId, i);
                         throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
                     }
+
+                    // 非末片必须刚好是 chunkSize，否则说明这个分片被截断了
+                    if (i < totalChunks - 1) {
+                        long partSize = Files.size(part);
+                        if (partSize != chunkSize) {
+                            log.warn("分片大小异常: uploadId={}, index={}, 期望={}, 实际={}",
+                                    uploadId, i, chunkSize, partSize);
+                            throw new BizException(ErrorCode.TRANSFER_CHUNK_MISSING);
+                        }
+                    }
+
                     try (InputStream in = Files.newInputStream(part)) {
                         in.transferTo(out);
                     }
