@@ -87,7 +87,15 @@ public class UploadService {
 
         log.info("登记上传: id={}, name={}, size={}, key={}",
                 record.getId(), record.getFileName(), record.getFileSize(), storageKey);
-        return new PrepareUploadVO(record.getId(), storageKey, CHUNK_SIZE, maxSize);
+
+        // 分片任务的初始化由服务端代发：浏览器不允许 JS 设置 Content-Length，
+        // 而又拍云的 initiate 要求带 Content-Length: 0，前端直接发会得到 404（很难排查）。
+        // 这个请求只有几十字节，不占带宽；真正吃带宽的分片数据仍由前端直传。
+        String multiUuid = storageClient.initMultipart(storageKey, dto.getFileSize(), dto.getContentType());
+
+        String uploadBaseUrl = "https://" + properties.getUpyun().getApiHost();
+        return new PrepareUploadVO(record.getId(), storageKey, uploadBaseUrl, multiUuid,
+                (int) CHUNK_SIZE, (int) maxSize);
     }
 
     /**
@@ -115,20 +123,27 @@ public class UploadService {
     /**
      * 标记上传完成。
      *
-     * <p>只有完成之后记录才是「可用」状态，业务侧引用一个上传中的文件是拿不到内容的。
+     * <p>两件事：让又拍云把分片合并成完整文件，然后把记录标成可用。
+     * 合并同样是服务端代发（无请求体的 PUT，浏览器发不出去）。
      *
-     * @param uploadId 上传记录 ID
+     * @param uploadId  上传记录 ID
+     * @param multiUuid 分片任务标识，prepare 时已下发
      * @return 文件信息，含可直接访问的 URL
-     * @throws BizException 记录不存在（4003）
+     * @throws BizException 记录不存在（4003）或合并失败（4007）
      */
     @Transactional(rollbackFor = Exception.class)
-    public UploadFileVO complete(Long uploadId) {
+    public UploadFileVO complete(Long uploadId, String multiUuid) {
         UploadFile record = fileMapper.selectById(uploadId);
         if (record == null) {
             throw new BizException(StorageError.FILE_NOT_FOUND);
         }
 
         if (record.getStatus() == UploadFile.STATUS_UPLOADING) {
+            // 先合并，合并成功才标记可用——顺序反了会出现"记录可用但文件是半成品"
+            if (StringUtils.hasText(multiUuid)) {
+                storageClient.completeMultipart(record.getStorageKey(), multiUuid);
+            }
+
             UploadFile update = new UploadFile();
             update.setId(uploadId);
             update.setStatus(UploadFile.STATUS_READY);

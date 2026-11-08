@@ -28,7 +28,10 @@ public enum StorageError implements ErrorItem {
     INVALID_PATH(4005, "文件路径非法"),
 
     /** 存储服务未配置（比如忘了填操作员密码） */
-    NOT_CONFIGURED(4006, "对象存储未配置");
+    NOT_CONFIGURED(4006, "对象存储未配置"),
+
+    /** 上传过程中的失败：初始化分片任务、合并分片、或又拍云返回非 2xx */
+    UPLOAD_FAILED(4007, "上传失败，请重试");
 
     /** 业务状态码 */
     private final int code;
