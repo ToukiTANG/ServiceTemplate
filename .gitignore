@@ -18,6 +18,14 @@ frontend/.env.local
 frontend/.eslintcache
 *.tsbuildinfo
 
+# ---------- 部署产物 ----------
+# 这些是本地构建出来、上传到服务器的，不进版本库
+deploy/backend/app.jar
+deploy/www/
+deploy/data/
+# 含数据库/JWT/又拍云密钥
+deploy/.env
+
 # ---------- IDE ----------
 .idea/
 *.iml

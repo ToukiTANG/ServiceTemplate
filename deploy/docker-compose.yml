@@ -1,0 +1,114 @@
+# =============================================================================
+# 生产部署 · Docker Compose
+# -----------------------------------------------------------------------------
+# 目标机器：Ubuntu 24.04，2G 内存，单机
+#
+# 内存预算（2G 里怎么分）：
+#   系统 + Docker daemon   ~450MB
+#   mysql                  512MB（限死）
+#   app                   640MB（JVM -Xmx384m）
+#   nginx                  64MB
+#   合计                  ~1.7GB，剩 300MB 给页缓存
+#
+# 所以每个服务都必须写 mem_limit，不写的话 OOM 时内核会随机杀进程
+# （最常见的受害者是 MySQL，表现成"数据库莫名重启"）。
+#
+# 使用方式见 docs/deploy.md。不要直接 docker compose up，
+# 首次部署要先生成证书，否则 nginx 会因为找不到证书启动失败。
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # MySQL
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: touki-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: template_dev
+      MYSQL_USER: template_app
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Shanghai
+    command:
+      # 2G 机器必须压：默认 buffer pool 128M 尚可，但 performance_schema
+      # 会多占 100MB 左右，个人项目用不上，直接关掉
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      # 数据必须挂到宿主，否则 docker compose down 会把库一起删掉
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      # app 靠这个判断"MySQL 真的能连了"，而不是"容器起来了"
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 512m
+
+  # ---------------------------------------------------------------------------
+  # 后端
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: ./backend
+    container_name: touki-app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      # 生产 profile：不加载 application-local.yml（镜像里也没有）
+      SPRING_PROFILES_ACTIVE: prod
+      # 数据库：用 compose 的服务名 mysql 当主机名
+      DB_HOST: mysql
+      DB_NAME: template_dev
+      DB_USERNAME: template_app
+      DB_PASSWORD: ${DB_PASSWORD}
+      # JWT 密钥：必须换掉，模板里那个是公开的占位值
+      JWT_SECRET: ${JWT_SECRET}
+      # 又拍云操作员密码
+      UPYUN_PASSWORD: ${UPYUN_PASSWORD}
+      # JVM：2G 内存下 384m 堆够用，再大会把 MySQL 挤到 swap
+      JAVA_TOOL_OPTIONS: -Xmx384m -Xms256m -XX:MaxMetaspaceSize=128m
+    mem_limit: 640m
+
+  # ---------------------------------------------------------------------------
+  # Nginx：托管前端静态文件 + 反代 /api
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: touki-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./www:/usr/share/nginx/html:ro
+      # 证书目录：certbot 写，nginx 读
+      - ./data/certbot/conf:/etc/letsencrypt:ro
+      - ./data/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - app
+    mem_limit: 64m
+
+  # ---------------------------------------------------------------------------
+  # Certbot：申请并自动续期证书
+  #
+  # 常驻一个容器，每 12 小时检查一次是否需要续期。
+  # 用 webroot 模式（把验证文件写进 nginx 能访问的目录），不用停 nginx。
+  # ---------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot
+    container_name: touki-certbot
+    restart: always
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"

@@ -17,7 +17,7 @@ spring:
 
   profiles:
     # 默认激活 local，用于加载本机的数据库密码
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
 
   datasource:
     # 库名走环境变量 DB_NAME，默认 template_dev。
@@ -34,8 +34,8 @@ spring:
     #                         非 SSL 连接下不开启会报 "Public Key Retrieval is not allowed"
     #   useUnicode/characterEncoding  避免中文乱码
     #   rewriteBatchedStatements  开启后批量插入会合并成多值 INSERT，快一个量级
-    url: jdbc:mysql://localhost:3306/${DB_NAME:template_dev}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
-    username: template_app
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:template_dev}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:template_app}
     # 由 application-local.yml 或环境变量 DB_PASSWORD 提供；留空会导致连接失败
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -93,7 +93,7 @@ app:
     # JWT 签名密钥。HS256 要求至少 32 字节，否则 JJWT 会抛 WeakKeyException 导致启动失败。
     # 这个值一旦泄露，任何人都能伪造令牌；一旦更换，所有已签发的令牌立即失效。
     # 部署到公网前务必换成自己的随机串。
-    secret: 请改成一个至少32字节的随机字符串_ChangeMe_To_A_Random_Secret
+    secret: ${JWT_SECRET:请改成一个至少32字节的随机字符串_ChangeMe_To_A_Random_Secret}
     # 令牌有效期（小时）。168 = 7 天
     expire-hours: 168
 
