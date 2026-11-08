@@ -8,7 +8,8 @@ import { useIsMobile } from '@/utils/responsive'
 /**
  * 管理端：文件传输记录。
  *
- * <p>能看到所有记录（包括还在上传中的），可以按文件名和状态筛选，可以手动删除。
+ * <p>能看到所有传输记录，可以按状态筛选，可以手动删除。
+ * 文件名来自关联的上传记录——本表只存业务属性（提取码、有效期、下载次数）。
  * 删除会同时删磁盘文件——这个操作不可恢复，所以做了二次确认。
  */
 
@@ -21,7 +22,6 @@ const total = ref(0)
 const query = reactive<TransferQuery>({
   pageNum: 1,
   pageSize: 10,
-  fileName: '',
   status: undefined
 })
 
@@ -45,7 +45,6 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  query.fileName = ''
   query.status = undefined
   query.pageNum = 1
   void load()
@@ -60,7 +59,7 @@ function handleReset(): void {
 async function handleDelete(row: TransferAdminItem): Promise<void> {
   try {
     await ElMessageBox.confirm(
-      `确定删除「${row.fileName}」（提取码 ${row.code}）吗？磁盘文件会一起删除，不可恢复。`,
+      `确定删除「${row.fileName}」（提取码 ${row.code}）吗？对象存储上的文件会一起删除，不可恢复。`,
       '删除确认',
       {
         type: 'warning',
@@ -85,11 +84,10 @@ async function handleDelete(row: TransferAdminItem): Promise<void> {
   }
 }
 
-/** 状态映射成标签文案与颜色 */
-function statusMeta(status: number): { text: string; type: 'success' | 'info' | 'warning' } {
-  if (status === 1) return { text: '可下载', type: 'success' }
-  if (status === 0) return { text: '上传中', type: 'warning' }
-  return { text: '已删除', type: 'info' }
+/** 状态映射成标签文案与颜色。改造后只有两种：可用 / 已失效 */
+function statusMeta(status: number): { text: string; type: 'success' | 'info' } {
+  if (status === 1) return { text: '可用', type: 'success' }
+  return { text: '已失效', type: 'info' }
 }
 
 /** 字节转易读大小 */
@@ -111,10 +109,10 @@ function buildLink(code: string): string {
 }
 
 /**
- * 复制下载链接到剪贴板。
+ * 复制分享链接到剪贴板。
  *
- * 只传一个 status=0 的记录（上传中、还没提取码）时直接忽略，
- * 避免复制出一条打不开的链接。
+ * 复制的是「本站提取页」的链接（/transfer/{code}），不是对象存储直链——
+ * 发给别人的应该是干净的短链，而不是带随机路径的 CDN 地址。
  */
 async function copyLink(row: TransferAdminItem): Promise<void> {
   if (!row.code) {
@@ -140,20 +138,10 @@ onMounted(() => {
   <div class="transfer-list">
     <el-card shadow="never" class="filter-card">
       <el-form :inline="!isMobile" class="filter-form" @submit.prevent="handleSearch">
-        <el-form-item label="文件名">
-          <el-input
-            v-model="query.fileName"
-            class="filter-input"
-            placeholder="按文件名搜索"
-            clearable
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-
         <el-form-item label="状态">
           <el-select v-model="query.status" class="filter-input" placeholder="全部" clearable>
-            <el-option label="上传中" :value="0" />
-            <el-option label="可下载" :value="1" />
+            <el-option label="可用" :value="1" />
+            <el-option label="已失效" :value="2" />
           </el-select>
         </el-form-item>
 

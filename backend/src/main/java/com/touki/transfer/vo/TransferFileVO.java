@@ -5,26 +5,30 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 文件信息出参（提取页用，公开接口）。
+ * 文件传输出参。
  *
- * <p><b>这是公开接口的返回值，任何知道提取码的人都能看到。</b>
- * 因此只包含展示与下载必需的信息：
- * <ul>
- *   <li>不返回 {@code storagePath}——那是服务器内部路径，泄露会有安全隐患</li>
- *   <li>不返回 {@code fileHash}——没有用处，反而暴露文件内容特征</li>
- *   <li>不返回下载次数以外的统计信息</li>
- * </ul>
+ * <p>创建和查询共用一个结构：创建时前端要展示提取码，查询时用户已经输过码了，
+ * 多返回一个字段不影响使用，反而省掉一个几乎重复的 VO。
+ *
+ * <p>注意 {@code url} 是又拍云上的直链，**下载不经过我们的服务器**——
+ * 服务器带宽只有几 Mbps，几百 MB 的文件经中转要二十多分钟。
  */
 @Data
 public class TransferFileVO {
 
+    /** 提取码 */
+    private String code;
+
     /** 原始文件名 */
     private String fileName;
 
-    /** 文件大小（字节），前端负责格式化成 MB/GB */
+    /** 文件大小（字节） */
     private Long fileSize;
 
-    /** 过期时间，前端可以显示"还有 12 小时过期" */
+    /** 直链地址，域名与协议来自存储配置 */
+    private String url;
+
+    /** 过期时间 */
     private LocalDateTime expireTime;
 
     /** 已下载次数 */

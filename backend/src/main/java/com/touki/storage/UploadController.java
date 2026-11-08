@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -66,12 +67,16 @@ public class UploadController {
     /**
      * 第三步：标记上传完成。
      *
-     * @param uploadId 上传记录 ID
+     * <p>服务端会调用又拍云合并分片，所以必须带上 prepare 时拿到的 {@code multiUuid}。
+     *
+     * @param uploadId  上传记录 ID
+     * @param multiUuid 分片任务标识
      * @return 文件信息（含访问 URL）
      */
-    @Operation(summary = "确认上传完成", description = "全部数据传完后调用，之后该文件才能被业务引用")
+    @Operation(summary = "确认上传完成", description = "全部数据传完后调用，服务端负责合并分片")
     @PostMapping("/complete/{uploadId}")
-    public R<UploadFileVO> complete(@PathVariable Long uploadId) {
-        return R.ok(uploadService.complete(uploadId));
+    public R<UploadFileVO> complete(@PathVariable Long uploadId,
+                                    @RequestParam(required = false) String multiUuid) {
+        return R.ok(uploadService.complete(uploadId, multiUuid));
     }
 }

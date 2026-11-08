@@ -23,7 +23,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * 又拍云存储客户端：签名、删除、拼接访问地址、生成存储路径。
@@ -156,6 +158,156 @@ public class StorageClient {
         } catch (Exception e) {
             log.error("删除对象异常: key={}", key, e);
             throw new BizException(StorageError.DELETE_FAILED);
+        }
+    }
+
+    // ==================== 分片上传（服务端代发） ====================
+
+    /**
+     * 初始化分片上传任务，返回任务标识。
+     *
+     * <p><b>为什么这一步放在服务端：</b>又拍云的 initiate 是一个<b>没有请求体</b>的 PUT，
+     * 且要求带 {@code Content-Length: 0}。而浏览器的 fetch 不允许 JS 设置 Content-Length，
+     * 无 body 的 PUT 也不会自动带上，结果就是又拍云返回 404（而不是参数错误，很难排查）。
+     *
+     * <p>服务端代发没有这个问题：这个请求只有几十字节，不涉及文件内容，
+     * 不会占用服务器带宽。真正吃带宽的分片数据仍然由前端直传。
+     *
+     * @param storageKey  存储路径
+     * @param fileSize    整个文件的字节数
+     * @param contentType MIME 类型
+     * @return 分片任务标识（x-upyun-multi-uuid）
+     * @throws BizException 初始化失败
+     */
+    public String initMultipart(String storageKey, long fileSize, String contentType) {
+        StorageProperties.Upyun cfg = requireConfig();
+        String key = normalizeKey(storageKey);
+        String url = "https://" + cfg.getApiHost() + "/" + cfg.getBucket() + "/" + key;
+
+        try {
+            SignedRequest signed = sign("PUT", key, 0);
+            Map<String, String> headers = new LinkedHashMap<>();
+            headers.put("Authorization", signed.authorization());
+            headers.put("Date", signed.date());
+            headers.put("x-upyun-multi-stage", "initiate");
+            headers.put("x-upyun-multi-length", String.valueOf(fileSize));
+            headers.put("x-upyun-multi-type", StringUtils.hasText(contentType)
+                    ? contentType : "application/octet-stream");
+
+            NoBodyResponse response = putNoBody(url, headers);
+            if (response.status() / 100 != 2) {
+                log.warn("初始化分片任务失败: key={}, status={}, body={}",
+                        key, response.status(), response.body());
+                throw new BizException(StorageError.UPLOAD_FAILED);
+            }
+
+            String uuid = response.header("x-upyun-multi-uuid");
+            if (!StringUtils.hasText(uuid)) {
+                log.warn("初始化分片任务未返回 uuid: key={}", key);
+                throw new BizException(StorageError.UPLOAD_FAILED);
+            }
+            return uuid;
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("初始化分片任务异常: key={}", key, e);
+            throw new BizException(StorageError.UPLOAD_FAILED);
+        }
+    }
+
+    /**
+     * 结束分片上传任务，让又拍云把分片合并成完整文件。
+     *
+     * <p>同样是服务端代发，理由与 {@link #initMultipart} 相同：无请求体的 PUT。
+     *
+     * @param storageKey 存储路径
+     * @param multiUuid  分片任务标识
+     * @throws BizException 合并失败
+     */
+    public void completeMultipart(String storageKey, String multiUuid) {
+        StorageProperties.Upyun cfg = requireConfig();
+        String key = normalizeKey(storageKey);
+        String url = "https://" + cfg.getApiHost() + "/" + cfg.getBucket() + "/" + key;
+
+        try {
+            SignedRequest signed = sign("PUT", key, 0);
+            Map<String, String> headers = new LinkedHashMap<>();
+            headers.put("Authorization", signed.authorization());
+            headers.put("Date", signed.date());
+            headers.put("x-upyun-multi-stage", "complete");
+            headers.put("x-upyun-multi-uuid", multiUuid);
+
+            NoBodyResponse response = putNoBody(url, headers);
+            // 201 = 新文件，204 = 覆盖同名文件，都算成功
+            if (response.status() != 201 && response.status() != 204) {
+                log.warn("合并分片失败: key={}, uuid={}, status={}, body={}",
+                        key, multiUuid, response.status(), response.body());
+                throw new BizException(StorageError.UPLOAD_FAILED);
+            }
+            log.info("分片合并完成: key={}, status={}", key, response.status());
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("合并分片异常: key={}", key, e);
+            throw new BizException(StorageError.UPLOAD_FAILED);
+        }
+    }
+
+    /**
+     * 发一个没有请求体的 PUT。
+     *
+     * <p><b>为什么不用 JDK 的 HttpClient：</b>它对零长度 body 一律不发 {@code Content-Length} 头
+     * （{@code noBody()} 和 {@code ofByteArray(new byte[0])} 都一样），
+     * 而又拍云的 initiate/complete 强制要求这个头，缺了会返回
+     * {@code 403 need content-length header}。
+     *
+     * <p>{@link java.net.HttpURLConnection} 的 {@code setFixedLengthStreamingMode(0)}
+     * 能明确表达"请求体长度是 0"，从而正确带上 {@code Content-Length: 0}。
+     *
+     * @param url     完整地址
+     * @param headers 请求头
+     * @return 状态码、响应体与响应头
+     * @throws java.io.IOException 网络异常
+     */
+    private NoBodyResponse putNoBody(String url, Map<String, String> headers) throws java.io.IOException {
+        java.net.HttpURLConnection conn =
+                (java.net.HttpURLConnection) URI.create(url).toURL().openConnection();
+        conn.setRequestMethod("PUT");
+        conn.setDoOutput(true);
+        // 关键：告诉底层"请求体长度为 0"，才会发出 Content-Length: 0
+        conn.setFixedLengthStreamingMode(0);
+        conn.setConnectTimeout(20_000);
+        conn.setReadTimeout(60_000);
+        headers.forEach(conn::setRequestProperty);
+
+        int status = conn.getResponseCode();
+        java.io.InputStream in = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+        String body = "";
+        if (in != null) {
+            try (java.io.InputStream stream = in) {
+                body = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        }
+        Map<String, java.util.List<String>> respHeaders = conn.getHeaderFields();
+        conn.disconnect();
+        return new NoBodyResponse(status, body, respHeaders);
+    }
+
+    /**
+     * 无请求体 PUT 的响应。
+     *
+     * @param status  状态码
+     * @param body    响应体
+     * @param headers 响应头（key 大小写不敏感）
+     */
+    private record NoBodyResponse(int status, String body, Map<String, java.util.List<String>> headers) {
+
+        /** 按名字取响应头，忽略大小写 */
+        String header(String name) {
+            return headers.entrySet().stream()
+                    .filter(e -> e.getKey() != null && e.getKey().equalsIgnoreCase(name))
+                    .map(e -> e.getValue().isEmpty() ? null : e.getValue().get(0))
+                    .findFirst().orElse(null);
         }
     }
 
